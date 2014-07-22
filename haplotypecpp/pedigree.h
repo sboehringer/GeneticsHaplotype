@@ -32,15 +32,23 @@ typedef vector<iid_t>	iidVector_t;
 template<class T> class vectorR : public vector<T> {
 public:
 	vectorR<T>() : vector<T>() {}
+	vectorR<T>(vector<iid_t> &other) : vector<T>(other) {}
 	vectorR<T>(IntegerVector &v) {
 		this->reserve(v.length());
 		for (int i = 0; i < v.length(); i++) (*this)[i] = v[i];
 	}
+	//inline T	operator[](int i) { return (*this)[i]; }
 };
 
 template<class T> class matrixR : public vector< vectorR<T> > {
 public:
 	matrixR<T>() : vector< vectorR<T> >() {}
+	matrixR<T>(vector< vector<iid_t> > &other) : vector< vectorR<T> >(other.size()) {
+		this->reserve(other.size());
+		for (int i = 0; i < other.size(); i++) {
+			(*this)[i] = other[i];
+		}
+	}
 	matrixR<T>(IntegerMatrix &m) : vector< vectorR<T> >(m.nrow()) {
 		this->reserve(m.nrow());
 		for (int i = 0; i < m.nrow(); i++) {
@@ -60,7 +68,8 @@ class Pedigree {
 	 */
 	Pedigree() : founder(), itrio() {}
 	Pedigree(IntegerVector &_founder, IntegerMatrix &_itrio);
-	~Pedigree();
+	Pedigree(vector<iid_t> &_founder, vector< vector<iid_t> > &_itrio);
+	~Pedigree() {}
 
 	/*
 	 * pedigree methods

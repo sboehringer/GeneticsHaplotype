@@ -7,13 +7,16 @@
 source('haplotype.R');
 system("cd ~/src/Rprivate ; ./exportR.sh"); source("RgenericAll.R"); source("Rgenetics.R"); loadLibraries();
 
-if (0) {
+if (T) {
 	ped = data.frame(fid = 1, iid = 1:6, mid = c(NA, NA, 1, 1, NA, 4), pid = c(NA, NA, 2, 2, NA, 5));
 	ped = ped[c(1,6,3,4,5,2), ];
+}
+
+if (0) {
 	print(ped);
 	pedu = ped2uniqueId(ped);
 	print(pedu);
-	print(pedigreeInheritanceTrios(pedu));
+	#print(pedigreeInheritanceTrios(pedu));
 }
 
 if (0) {

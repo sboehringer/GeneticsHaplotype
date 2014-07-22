@@ -7,22 +7,30 @@
 #define CARTESIAN_H
 
 #include <vector>
+#include <iostream>
 using namespace std;
 
 template<typename T> class Cartesian;
 
 template<typename T>
 class CartesianIterator  : public vector<T> {
+	bool	exhausted;
 
 protected:
 	Cartesian<T>		counts;
 
 public:
-	CartesianIterator() : Cartesian<T>(), vector<T>() {}
-	CartesianIterator(Cartesian<T> &_counts, vector<T> &_indeces) : counts(_counts), vector<T>(_indeces) {}
-	CartesianIterator(Cartesian<T> &_counts) : counts(_counts), vector<T>(0, _counts.size()) {}
-	CartesianIterator(vector<T> &_counts) : counts(_counts), vector<T>(0, _counts.size()) {}
-    CartesianIterator(const CartesianIterator& other) : counts(other.counts), vector<T>(other) {}
+	CartesianIterator() : Cartesian<T>(), vector<T>(), exhausted(false) {}
+	CartesianIterator(Cartesian<T> &_counts, vector<T> &_indeces)
+	: vector<T>(_indeces), counts(_counts), exhausted(false) {}
+	CartesianIterator(Cartesian<T> &_counts)
+	: vector<T>(_counts.size(), 0), counts(_counts), exhausted(false) {}
+	CartesianIterator(vector<T> &_counts)
+	: vector<T>(_counts.size(), 0), counts(_counts), exhausted(false) {}
+    CartesianIterator(const CartesianIterator& other)
+	: counts(other.counts), vector<T>(other), exhausted(false) {
+		cout << counts << endl;
+	}
     ~CartesianIterator() {}
     CartesianIterator& operator=(const CartesianIterator& other) {
 		*(vector<T> *)this = (vector<T>)other;
@@ -35,15 +43,15 @@ public:
 	bool operator++(void) {
 		int i = 0;
 		while (i < this->size() && (*this)[i] == counts[i] - 1) i++;
-		if (i == this->size()) return false;	// exhaustion of iterator
+		if (i == this->size()) {
+			exhausted = true;
+			return false;	// exhaustion of iterator
+		}
 		(*this)[i]++;
 		while (--i >= 0) (*this)[i] = 0;
 		return true;
 	}
-	bool	isExhausted(void) {
-		for (int i = 0; i < this->size(); i++) if ((*this)[i] < counts[i] - 1) return false;
-		return true;
-	}
+	inline bool	isExhausted(void) { return exhausted; }
 };
 
 template<typename T>

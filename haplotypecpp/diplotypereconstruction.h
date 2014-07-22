@@ -29,16 +29,17 @@ public:
 	 *	reconstruction methods
 	 */
 	virtual void	reconstruct(const GenotypeFetcher &fetcher);
+	virtual void	print(void);
 };
 
 typedef unsigned long long	buffer_t;
 
 class DiplotypeReconstructionSNPunordered : public DiplotypeReconstruction
 {
-	Buffer<buffer_t>	reconstruction;
 	int					bitsFactor;
 	int					bitsHt;
 	size_t				reconstructionSize;
+	Buffer<buffer_t>	reconstruction;
 public:
 	/*
 	 *	creation / destruction / boilerplate 
@@ -48,6 +49,7 @@ public:
 	~DiplotypeReconstructionSNPunordered();
 
 	virtual void	reconstruct(const GenotypeFetcher &fetcher);
+	virtual void	print(void);
 };
 
 /*
@@ -73,8 +75,8 @@ inline diplotype_t diplotypeFromTemplate(diplotype_t t, int comb, haplotype_t he
 
 	// heterozygous genotypes
 	haplotype_t	het1 = (comb >> (2*countMiss)) & BitMask<haplotype_t, int>(countHet);
-	t.d1 |= bitEmbedValueInOnes(miss, het1, countMiss);
-	t.d2 |= bitEmbedValueInOnes(miss, ~het1, countMiss);
+	t.d1 |= bitEmbedValueInOnes(het, het1, countHet);
+	t.d2 |= bitEmbedValueInOnes(het, ~het1, countHet);
 
 	return t;
 }
@@ -95,7 +97,8 @@ public:
 	 */
     DiplotypeReconstructionSNPunorderedRaw(Pedigree &_pedigree, const GenotypeFetcher &_fetcher) :
 		founders(_pedigree.founders()), fetcher(_fetcher),
-		missing(founders.size()), heterozygous(founders.size()), templates(founders.size()), founderIterator(0) {
+		missing(founders.size()), heterozygous(founders.size()),
+		templates(founders.size()), founderIterator(0) {
 
 		vector<int>	countFounders(founders.size());
 		for (iid_t i = 0; i < founders.size(); i++) {
@@ -127,7 +130,9 @@ public:
 			++(*founderIterator);
 		// tried diplotype was not unordered, still more to try
 		} while (!founderIterator->isExhausted() && i < founders.size());
-		return !founderIterator->isExhausted();
+		// last element was generated and founderIterator is exhausted
+		// the latter condition is checked by the first if
+		return i >= founders.size();
 	}
 };
 

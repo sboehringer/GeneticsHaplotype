@@ -26,6 +26,8 @@ pedDistFromRoot = function(pedu, col = 'm') {
 	}
 	depth = apply(Df_(d0, min_ = cols), 1, function(r)sum(is.na(r)));
 	depth = max(depth) - depth;	# distance from root maternally
+	depthO = depth[order_align(pedu$id, d0$id)];
+	depthO
 }
 
 ped2ivTrios = function(ped) {
@@ -35,9 +37,9 @@ ped2ivTrios = function(ped) {
 	depth = apply(cbind(depthM, depthP), 1, max);
 
 	# original ped sorted according to depth (max - number of ancestors in tree)
-	depthO = depth[order_align(pedu$id, d0$id)];
-	peds = data.frame(pedu, depth = depthO)[order(depthO), ];
-	r = list(trios = peds[peds$depth > 0, c('id', 'm', 'p')], founders = peds$id[peds$depth == 0]);
+	peds = data.frame(pedu, depth = depth);
+	trios = peds[peds$depth > 0, ];
+	r = list(trios = trios[order(trios$depth), c('id', 'm', 'p')], founders = peds$id[peds$depth == 0]);
 	r
 }
 

@@ -18,14 +18,8 @@ void	DiplotypeReconstruction::reconstruct(const GenotypeFetcher &fetcher) {
 	throw("abstract method called");
 }
 
-template <typename T>
-inline T roundUp(T v, T modulo) {
-	return (v + modulo - 1)/modulo;
-}
-
-template <typename T>
-inline T roundUpBitsToBytes(T bits) {
-	return roundUp(bits, typeBits(T)) / bitsPerByte;
+void	DiplotypeReconstruction::print(void){
+	throw("abstract method called");
 }
 
 #if 0
@@ -76,29 +70,49 @@ DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
  *   - ambiguous transmissions do not contribute (already covered by step above)
  */
 
+inline haplotype_t	selectFromDiplotype(diplotype_t dt, bool index) {
+	return !index? dt.d1: dt.d2;
+}
+
 void	DiplotypeReconstructionSNPunordered::reconstruct(const GenotypeFetcher &fetcher) {
 	DiplotypeReconstructionSNPunorderedRaw	founderReconst(pedigree, fetcher);
 	vector<diplotype_t>						dtFounder(pedigree.sizeFounders());
-	vector<diplotype_t>						dtOffspring(pedigree.sizeItrios());
+	// all diplotypes
+	vector<diplotype_t>						dts(pedigree.sizeFounders() + pedigree.sizeItrios());
 	vector<bool>							bothTransm(pedigree.sizeItrios());
 	vector<bool>							iv(2*pedigree.sizeItrios());
+	marker_t								cm = fetcher.countMarkers();
 
 	while (founderReconst.founderReconstruction(dtFounder)) {
+		for (int i = 0; i < dtFounder.size(); i++)
+			dts[pedigree.founders()[i]] = dtFounder[i];
+
 		iid_t j;
 		for (j = 0; j < pedigree.sizeItrios(); j++) {
 			iid_t			id = pedigree.trioIid(j), mid = pedigree.trioMid(j), pid = pedigree.trioPid(j);
-			diplotype_t		dtm = dtFounder[mid], dtp = dtFounder[pid];
+			diplotype_t		dtm = dts[mid], dtp = dts[pid];
 			haplotype_t		miss = fetcher.maskMissing(id);
-			genotypecomb_t	gtc00 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d1, dtp.d1}, miss);
-			genotypecomb_t	gtc01 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d1, dtp.d2}, miss);
-			genotypecomb_t	gtc10 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d2, dtp.d1}, miss);
-			genotypecomb_t	gtc11 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d2, dtp.d2}, miss);
+			// read index gtcIJ right-to-left
+			genotypecomb_t	gtc00 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d1, dtp.d1}, cm, miss);
+			genotypecomb_t	gtc10 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d1, dtp.d2}, cm, miss);
+			genotypecomb_t	gtc01 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d2, dtp.d1}, cm, miss);
+			genotypecomb_t	gtc11 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d2, dtp.d2}, cm, miss);
 			genotypecomb_t	gtcO = fetcher.genotypeCombination(id);	//offspring
 
 			if (gtcO != gtc00 && gtcO != gtc01 && gtcO != gtc10 && gtcO != gtc11) break;
-			// compute possible inheritance vector
-			iv[2*j]		= gtcO == gtc10 || gtcO == gtc11;
-			iv[2*j + 1]	= gtcO == gtc01 || gtcO == gtc11;
+			// compute possible inheritance vector: first haplotype from grandmother =^= 0
+			// if needed to make both entries of iv consistent (<N> special case: bothTransm)
+			if ((gtcO == gtc00 || gtcO == gtc10)) {
+				iv[2*j] = 0;
+				iv[2*j + 1] = gtcO == gtc10;
+			} else {
+				iv[2*j] = 1;
+				iv[2*j + 1]	= gtcO == gtc11;
+			}
+			// save offspring diplotype for reference for other I-trios
+			dts[id] = (diplotype_t){
+				selectFromDiplotype(dtm, iv[2*j]),
+				selectFromDiplotype(dtp, iv[2*j + 1]) };
 			// are both directions of transmission possible?
 			bothTransm[j] = (gtcO == gtc00 && gtcO == gtc11) || (gtcO == gtc01 && gtcO == gtc10);
 		}
@@ -108,20 +122,22 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(const GenotypeFetcher &fet
 		// encode reconstruction
 		buffer_t	*e = reconstruction.push();
 		int			factor = 0;
-		BitArray<buffer_t, iid_t>	Ahts(e, bitsFactor, bitsHt);
-		BitArray<buffer_t, iid_t>	Aiv(e, bitsFactor + 2*bitsHt, 1);
-		BitArray<buffer_t, int>		Afactor(e, 0, bitsFactor);
+		BitArray<buffer_t, iid_t>	Ahts(e, 0, bitsHt, 2*dtFounder.size());
+		BitArray<buffer_t, iid_t>	Aiv(BitArrayAfter_e, Ahts, 1, 2*pedigree.sizeItrios());
+		BitArray<buffer_t, iid_t>	Afactor(BitArrayAfter_e, Aiv, bitsFactor, 1);
 
 		for (iid_t i = 0; i < dtFounder.size(); i++) {
 			Ahts.set(2*i,     dtFounder[i].d1);
 			Ahts.set(2*i + 1, dtFounder[i].d2);
 			if (dtFounder[i].d1 != dtFounder[i].d2) factor++;
 		}
-		for (iid_t i = 0; i < dtOffspring.size(); i++) {
-			Aiv.set(i, iv[2*i] + 2*iv[2*i + 1]);
+		for (iid_t i = 0; i < pedigree.sizeItrios(); i++) {
+			Aiv.set(2*i,	iv[2*i]);
+			Aiv.set(2*i + 1,iv[2*i + 1]);
 			if (bothTransm[i]) factor++;
 		}
 		Afactor.set(0, factor);
+
 	}
 // 	//CartesianIterator<int>	&i = *(this->founderIterator(fetcher));
 // 
@@ -131,9 +147,36 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(const GenotypeFetcher &fet
 DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
 	Pedigree &_pedigree, int _bitsFactor, int _bitsHt, iid_t NreconstrBuffer)
 	:
+	DiplotypeReconstruction(_pedigree),
 	bitsFactor(_bitsFactor),
 	bitsHt(_bitsHt),
-	reconstructionSize(bitsFactor + bitsHt * 2 * pedigree.sizeFounders() + 2 * pedigree.sizeItrios()),
-	reconstruction(reconstructionSize, NreconstrBuffer),
-	DiplotypeReconstruction(_pedigree) {
+	reconstructionSize(roundUpBitsToBytes<buffer_t>(
+		bitsFactor + bitsHt * 2 * pedigree.sizeFounders() + 2 * pedigree.sizeItrios())),
+	reconstruction(reconstructionSize, NreconstrBuffer) {
+	cout << "reconstructionSize: " << reconstructionSize
+		<< " pedigreesize: " << pedigree.sizeFounders() << ", " << pedigree.sizeItrios()
+		<< " bitsHt: " << bitsHt << " bitsFactor: " << bitsFactor
+		<< " Size: " << _bitsFactor + _bitsHt * 2 * _pedigree.sizeFounders() + 2 * _pedigree.sizeItrios()
+		<< endl;
 }
+
+void	DiplotypeReconstructionSNPunordered::print(void) {
+	cout << "\tReconstruction size: " << reconstruction.size() << endl;
+	for (int j = 0; j < reconstruction.size(); j++) {
+		buffer_t					*e = reconstruction.buffer(j);
+		BitArray<buffer_t, iid_t>	Ahts(e, 0, bitsHt, 2*pedigree.sizeFounders());
+		BitArray<buffer_t, iid_t>	Aiv(BitArrayAfter_e, Ahts, 1, 2*pedigree.sizeItrios());
+		BitArray<buffer_t, iid_t>	Afactor(BitArrayAfter_e, Aiv, bitsFactor, 1);
+
+		cout << "\tFounders[";
+		for (iid_t i = 0; i < pedigree.sizeFounders(); i++)
+			cout << (i? " ": "") << "(" << Ahts[2*i] << ", " << Ahts[2*i + 1] << ")";
+		cout << "] IV[";
+		for (iid_t i = 0; i < pedigree.sizeItrios(); i++) {
+			cout << Aiv[2*i] << Aiv[2*i + 1];
+		}
+		cout << "] C[" << Afactor[0] << "]" << endl;
+	}
+}
+
+DiplotypeReconstructionSNPunordered::~DiplotypeReconstructionSNPunordered() {}
