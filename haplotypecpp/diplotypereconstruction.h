@@ -8,10 +8,16 @@
 #ifndef DIPLOTYPERECONSTRUCTION_H
 #define DIPLOTYPERECONSTRUCTION_H
 
+#include <valarray>
+#include "valarray_ext.h"
 #include "genotype.h"
 #include "buffer.h"
 #include "pedigree.h"
 #include "helpers.h"
+
+typedef double					haplotypefs_t;
+typedef Valarray<haplotypefs_t>	hfs_t;
+typedef double					random_t;
 
 class DiplotypeReconstruction
 {
@@ -49,7 +55,9 @@ public:
 	~DiplotypeReconstructionSNPunordered();
 
 	virtual void	reconstruct(const GenotypeFetcher &fetcher);
-	virtual void	print(void);
+	virtual void	print(void) const;
+	void			drawFromLogHfs(const hfs_t &lhfs, const random_t lu, haplotypes_t &draw) const;
+	void			drawFromHfs(const hfs_t &hfs, const random_t u, haplotypes_t &draw) const;
 };
 
 /*
@@ -58,9 +66,14 @@ public:
  * for founder diplotypes
  */
 
-// comb is current ordinal iteration
-// lower bits interpreted to belong to missingness
-// higher bits to account for heterozygous positions
+/* Produce valid diplotype from a template + index for a possible iteration
+ * This function produces ordered diplotypes
+ * 
+ * comb is current ordinal iteration
+ * lower bits interpreted to belong to missingness
+ * higher bits to account for heterozygous positions
+ */
+
 inline diplotype_t diplotypeFromTemplate(diplotype_t t, int comb, haplotype_t het, haplotype_t miss) {
 	// number of heterozygous loci
 	int	countHet = countBitsSet(het);
@@ -85,8 +98,8 @@ class DiplotypeReconstructionSNPunorderedRaw
 {
 	const vector<iid_t>		&founders;
 	const GenotypeFetcher	&fetcher;
-	vector<haplotype_t>		missing;
-	vector<haplotype_t>		heterozygous;
+	haplotypes_t			missing;
+	haplotypes_t			heterozygous;
 	// diplotype templates, pre-filled for homozygous positions
 	vector<diplotype_t>		templates;
 	CartesianIterator<int>	*founderIterator;

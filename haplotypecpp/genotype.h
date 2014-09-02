@@ -12,9 +12,10 @@
  * Allele coding: 0/1
  */
 
-typedef int				iid_t;
-typedef int				marker_t;
-typedef unsigned int	haplotype_t;
+typedef int					iid_t;
+typedef int					marker_t;
+typedef unsigned int		haplotype_t;
+typedef vector<haplotype_t>	haplotypes_t;
 typedef enum {genotype_0, genotype_1, genotype_2, genotype_NA } genotype_t;
 typedef vector<genotype_t>	gt_t;
 typedef struct {
