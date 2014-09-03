@@ -1,0 +1,6 @@
+#
+#	package creation
+#
+
+library('Rcpp');
+Rcpp.package.skeleton('genetics_haplotype', module = T);

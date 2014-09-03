@@ -1,0 +1,5 @@
+useDynLib(genetics_haplotype)
+exportPattern("^[[:alpha:]]+")
+import(methods)
+importFrom(Rcpp, loadModule)
+importFrom(Rcpp, evalCpp)
