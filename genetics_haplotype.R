@@ -5,7 +5,6 @@
 library('devtools');
 
 if (1) {
-	install('genetics_haplotype');
+	install('genetics.haplotype');
 }
-
 
