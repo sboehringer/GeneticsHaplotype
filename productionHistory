@@ -3,7 +3,7 @@
 #
 
 library('Rcpp');
-Rcpp.package.skeleton('geneticshaplotype', module = T);
+Rcpp.package.skeleton('GeneticsHaplotype', module = T);
 Rcpp.package.skeleton('genetics.haplotype', module = T);
 
 #
