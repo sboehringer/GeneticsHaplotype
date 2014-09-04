@@ -1,12 +1,12 @@
 Package: GeneticsHaplotype
 Type: Package
-Title: What the package does (short line)
+Title: Implements various algorithms needed in genetic haplotype based analyses
 Version: 1.0
-Date: 2014-09-04
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What Licence is it under ?
+Date: 2014-09-03
+Author: Stefan Böhringer
+Maintainer: Stefan Böhringer <r-packages@s-boehringer.org>
+Description: Implements various algorithms needed in genetic haplotype based analyses. Supports family based data. Reconstruction of diplotypes, given genotypes, drawing thereof. MCMC algorithms.
+License: LGPL 2.0
 Imports: methods, Rcpp (>= 0.11.1)
 LinkingTo: Rcpp
 RcppModules: yada, stdVector, NumEx

@@ -9,7 +9,7 @@ Rcpp.package.skeleton('genetics.haplotype', module = T);
 #
 #	DESCRIPTION
 #
-Package: geneticshaplotype
+Package: GeneticsHaplotype
 Type: Package
 Title: Implements various algorithms needed in genetic haplotype based analyses
 Version: 1.0
