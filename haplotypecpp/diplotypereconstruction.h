@@ -17,6 +17,7 @@
 
 typedef double					haplotypefs_t;
 typedef Valarray<haplotypefs_t>	hfs_t;
+typedef vector<haplotypefs_t>	hfsv_t;
 typedef double					random_t;
 
 class DiplotypeReconstruction
@@ -52,10 +53,12 @@ public:
 	 */
 	DiplotypeReconstructionSNPunordered(Pedigree &_pedigree,
 		int _bitsFactor = 6, int _bitsHt = 10, iid_t NreconstrBuffer = 1024);
+	DiplotypeReconstructionSNPunordered();
 	~DiplotypeReconstructionSNPunordered();
 
 	virtual void	reconstruct(const GenotypeFetcher &fetcher);
 	virtual void	print(void) const;
+
 	void			drawFromLogHfs(const hfs_t &lhfs, const random_t lu, haplotypes_t &draw) const;
 	void			drawFromHfs(const hfs_t &hfs, const random_t u, haplotypes_t &draw) const;
 };

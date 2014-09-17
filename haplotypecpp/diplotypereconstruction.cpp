@@ -162,6 +162,7 @@ DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
 		<< endl;
 }
 
+	
 void	DiplotypeReconstructionSNPunordered::print(void) const {
 	cout << "\tReconstruction size: " << reconstruction.size() << endl;
 	for (int j = 0; j < reconstruction.size(); j++) {

@@ -82,16 +82,4 @@ class Pedigree {
 	inline iid_t	trioPid(iid_t i) { return itrio[i][2]; }
 };
 
-class PedigreeCollection {
-	vector<Pedigree>	peds;
-	
-	public:
-	PedigreeCollection(List &pedvector);
-	~PedigreeCollection() {}
-
-	void	print(void);
-
-	//DiplotypeReconstruction		*reconstruct(void);	// ids of all individuals in the pedigrees
-};
-
 #endif

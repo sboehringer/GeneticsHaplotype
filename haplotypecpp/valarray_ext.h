@@ -8,14 +8,18 @@
 
 #include <valarray>
 #include <math.h>
+#include <vector>
 using namespace std;
 
 
 template<class T> class Valarray : public valarray<T>
 {
 public:
-	Valarray(valarray<T> other) : valarray<T>(other) {}
-	Valarray(vector<T> other) : valarray<T>((T)0, other.size()) {
+	Valarray(const valarray<T> other) : valarray<T>(other) {}
+// 	Valarray(const vector<T> other) : valarray<T>((T)0, other.size()) {
+// 		for (int i = 0; i < other.size(); i++) (*this)[i] = other[i];
+// 	}
+	Valarray(const vector<T> &other) : valarray<T>((T)0, other.size()) {
 		for (int i = 0; i < other.size(); i++) (*this)[i] = other[i];
 	}
 	Valarray(T val, int size) : valarray<T>(val, size) {}

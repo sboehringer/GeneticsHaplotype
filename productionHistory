@@ -4,7 +4,7 @@
 
 library('Rcpp');
 Rcpp.package.skeleton('GeneticsHaplotype', module = T);
-Rcpp.package.skeleton('genetics.haplotype', module = T);
+#Rcpp.package.skeleton('genetics.haplotype', module = T);
 
 #
 #	DESCRIPTION
@@ -14,10 +14,18 @@ Type: Package
 Title: Implements various algorithms needed in genetic haplotype based analyses
 Version: 1.0
 Date: 2014-09-03
-Author: Stefan Böhringer
-Maintainer: Stefan Böhringer <r-packages@s-boehringer.org>
+Author: Stefan Boehringer
+Maintainer: Stefan Boehringer <r-packages@s-boehringer.org>
 Description: Implements various algorithms needed in genetic haplotype based analyses. Supports family based data. Reconstruction of diplotypes, given genotypes, drawing thereof. MCMC algorithms.
 License: LGPL 2.0
 Imports: methods, Rcpp (>= 0.11.1)
 LinkingTo: Rcpp
 RcppModules: yada, stdVector, NumEx
+
+#
+#	zzz.R
+#
+.onLoad <- function(libname, pkgname){
+    #loadRcppModules()
+    loadModule("yada", TRUE)
+}
