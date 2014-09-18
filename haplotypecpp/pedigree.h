@@ -74,12 +74,13 @@ class Pedigree {
 	/*
 	 * pedigree methods
 	 */
-	iid_t	sizeFounders(void) { return founder.size(); }
-	iid_t	sizeItrios(void) { return itrio.size(); }
-	const vector<iid_t>	&founders(void) { return founder; }
-	inline iid_t	trioIid(iid_t i) { return itrio[i][0]; }
-	inline iid_t	trioMid(iid_t i) { return itrio[i][1]; }
-	inline iid_t	trioPid(iid_t i) { return itrio[i][2]; }
+	iid_t	sizeFounders(void) const { return founder.size(); }
+	iid_t	sizeItrios(void) const { return itrio.size(); }
+	inline iid_t	N(void) { return sizeFounders() + sizeItrios(); }
+	const vector<iid_t>	&founders(void) const { return founder; }
+	inline iid_t	trioIid(iid_t i) const { return itrio[i][0]; }
+	inline iid_t	trioMid(iid_t i) const { return itrio[i][1]; }
+	inline iid_t	trioPid(iid_t i) const { return itrio[i][2]; }
 };
 
 #endif
