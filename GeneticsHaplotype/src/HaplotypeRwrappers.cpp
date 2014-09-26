@@ -7,6 +7,19 @@
 
 #include	"HaplotypeRwrappers.hpp"
 
+R_Pedigree::R_Pedigree(List pedigree)
+: Pedigree(pedigree["founders"]), itrio(pedigree["itrios"]) {
+	//for (int i = 0; i < _founder.size(); i++) founder[i] = _founder[i];
+	//founder = vectorConvert<int, iid_t>(_founder(_founder.begin(), _founder.end()));
+	// 	itrio.resize(_itrio.nrow());
+	// 	for (int i = 0; i < _itrio.nrow(); i++) {
+	// 		itrio[i] = vector<iid_t>(3);
+	// 		//itrio[i].swap(vector<iid_t>(3));	// does not work
+	// 		for (int j = 0; j < _itrio.ncol(); j++)
+	// 			itrio[i][j] = itrio[i][j];
+	// 
+	// 	}
+}
 
 IntegerVector	R_DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfsv_t &lhfs, const random_t lu)
 	const {

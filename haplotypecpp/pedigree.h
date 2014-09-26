@@ -67,7 +67,6 @@ class Pedigree {
 	 * initialization, boilerplate	
 	 */
 	Pedigree() : founder(), itrio() {}
-	Pedigree(IntegerVector &_founder, IntegerMatrix &_itrio);
 	Pedigree(vector<iid_t> &_founder, vector< vector<iid_t> > &_itrio);
 	~Pedigree() {}
 

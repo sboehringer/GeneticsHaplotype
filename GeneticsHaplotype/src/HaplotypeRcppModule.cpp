@@ -27,6 +27,6 @@ RCPP_MODULE(Reconstructor) {
 	class_<Reconstructor>("DiplotypeReconstructor")
 	.constructor<const IntegerMatrix &, const List &>()
 
-	.method('drawFromHfs', &drawFromHfs, "Draw diplotypes for given haplotype frequency distribution for a set of pedigrees.")
+	.method("drawFromHfs", &drawFromHfs, "Draw diplotypes for given haplotype frequency distribution for a set of pedigrees.")
 	;
 }
