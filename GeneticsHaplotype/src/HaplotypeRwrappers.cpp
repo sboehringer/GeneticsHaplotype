@@ -7,8 +7,12 @@
 
 #include	"HaplotypeRwrappers.hpp"
 
+#if 0
 R_Pedigree::R_Pedigree(List pedigree)
-: Pedigree(pedigree["founders"]), itrio(pedigree["itrios"]) {
+: Pedigree(Rcpp::as< vector<int> >(rped["founders"]),
+		   Rcpp::as< vector< vector<int> > >(rped["itrios"])) {
+	
+	
 	//for (int i = 0; i < _founder.size(); i++) founder[i] = _founder[i];
 	//founder = vectorConvert<int, iid_t>(_founder(_founder.begin(), _founder.end()));
 	// 	itrio.resize(_itrio.nrow());
@@ -20,21 +24,22 @@ R_Pedigree::R_Pedigree(List pedigree)
 	// 
 	// 	}
 }
+#endif
 
 IntegerVector	R_DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfsv_t &lhfs, const random_t lu)
 	const {
 	
-	haplotypes_t	r(0, 0);
+	haplotypes_t	r(pedigree.N(), 0);
 	DiplotypeReconstructionSNPunordered::drawFromLogHfs(hfs_t(lhfs), lu, r);
 	return IntegerVector(r.begin(), r.end());
 }
 
-IntegerVector	R_DiplotypeReconstructionSNPunordered::drawFromHfs(const hfsv_t &hfs, const random_t u)
+haplotypes_t	R_DiplotypeReconstructionSNPunordered::drawFromHfs(const hfs_t &hfs, const random_t u)
 	const {
 
-	haplotypes_t	r(0, 0);
-	DiplotypeReconstructionSNPunordered::drawFromHfs(hfs_t(hfs), u, r);
-	return IntegerVector(r.begin(), r.end());
+	haplotypes_t	r(pedigree.N(), 0);
+	DiplotypeReconstructionSNPunordered::drawFromHfs(hfs, u, r);
+	return r;
 }
 
 

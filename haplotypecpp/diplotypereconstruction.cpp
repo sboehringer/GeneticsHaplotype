@@ -16,7 +16,7 @@ bool DiplotypeReconstruction::operator==(const DiplotypeReconstruction& other)
 
 }
 
-void	DiplotypeReconstruction::reconstruct(const GenotypeFetcher &fetcher) {
+void	DiplotypeReconstruction::reconstruct(GenotypeFetcher &fetcher) {
 	throw("abstract method called");
 }
 
@@ -76,7 +76,7 @@ inline haplotype_t	selectFromDiplotype(diplotype_t dt, bool index) {
 	return !index? dt.d1: dt.d2;
 }
 
-void	DiplotypeReconstructionSNPunordered::reconstruct(const GenotypeFetcher &fetcher) {
+void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) {
 	DiplotypeReconstructionSNPunorderedRaw	founderReconst(pedigree, fetcher);
 	vector<diplotype_t>						dtFounder(pedigree.sizeFounders());
 	// all diplotypes

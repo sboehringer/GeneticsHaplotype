@@ -46,6 +46,14 @@ public:
     ~Buffer() {
 		if (_buffer) free(_buffer);
 	}
+	Buffer & operator=(Buffer &&other) {
+		if (&other == this) return *this;
+		N = other.N;
+		capacity = other.capcity;
+		elementSize = other.elementSize
+		std::swap(_buffer, other._buffer);
+		return *this;
+	}
 
 	size_t	size(void) const { return(N); }
 	T 		*buffer(size_t i = 0) const { return((T *) ((unsigned char *)_buffer + i * elementSize)); }

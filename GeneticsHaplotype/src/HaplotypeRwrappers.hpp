@@ -10,12 +10,16 @@
 
 #include "diplotypereconstruction.h"
 #include "pedigree.h"
+#include <memory>
+using namespace std;
 
+#if 0
 class R_Pedigree : Pedigree {
 public:
 	R_Pedigree(List &pedigree);
 	~R_Pedigree();
 };
+#endif
 
 class R_DiplotypeReconstructionSNPunordered : public DiplotypeReconstructionSNPunordered
 {
@@ -26,14 +30,14 @@ public:
 	~R_DiplotypeReconstructionSNPunordered();
 	
 	IntegerVector 	drawFromLogHfs(const hfsv_t &lhfs, const random_t lu) const;
-	IntegerVector	drawFromHfs(const hfsv_t &hfs, const random_t u) const;
+	haplotypes_t	drawFromHfs(const hfs_t &hfs, const random_t u) const;
 };
 
 class R_GenotypeFetcher : public GenotypeFetcher
 {
-	const IntegerMatrix &m;
+	IntegerMatrix &m;
 public:
-	R_GenotypeFetcher(const IntegerMatrix &_m) : m(_m) {}
+	R_GenotypeFetcher(IntegerMatrix &_m) : m(_m) {}
 	~R_GenotypeFetcher() {}
 
 	virtual	marker_t	countMarkers(void) const {
@@ -44,17 +48,18 @@ public:
 	}
 };
 
-class PedigreeCollection : vector<Pedigree> {
+class PedigreeCollection : public vector< Pedigree > {
 	
 public:
-	PedigreeCollection(List &pedvector) : vector<Pedigree>() {
+	PedigreeCollection(const List &pedvector) : vector< Pedigree >() {
 		resize(pedvector.size());
 		for (int i = 0; i < pedvector.size(); i++) {
 			const List	&rped(Rcpp::as<List>(pedvector[i]));
-			const Pedigree	*ped = new Pedigree(
+			const Pedigree	ped(
 				Rcpp::as< vector<int> >(rped["founders"]),
 				Rcpp::as< vector< vector<int> > >(rped["itrios"])
 			);
+			push_back(ped);
 		}
 	}
 
@@ -68,36 +73,42 @@ public:
 };
 
 class GenotypeData {
-	const R_GenotypeFetcher		&fetcher;
-	const List					&peds;
+	R_GenotypeFetcher		&fetcher;
+	List					&peds;
 public:
-	GenotypeData(const R_GenotypeFetcher &_fetcher, const List &_peds) : fetcher(_fetcher), peds(_peds) {}
+	GenotypeData(R_GenotypeFetcher &_fetcher, List &_peds) : fetcher(_fetcher), peds(_peds) {}
 };
 
 class Reconstructor {
-	const R_GenotypeFetcher		&fetcher;
-	const List					&peds;
-	iid_t						N;
-	vector<R_DiplotypeReconstructionSNPunordered>	reconstructions;
+	R_GenotypeFetcher		&fetcher;
+	PedigreeCollection		peds;
+	iid_t					N;
+	vector<R_DiplotypeReconstructionSNPunordered>
+								reconstructions;
 
 public:
-	Reconstructor(const R_GenotypeFetcher &_fetcher, const List &_peds)
-	: fetcher(_fetcher), peds(_peds), reconstructions() {}
-	Reconstructor(const IntegerMatrix &_m, const List &_peds)
-	: fetcher(R_GenotypeFetcher(_m)), peds(_peds), reconstructions(), N(0) {
+	Reconstructor(R_GenotypeFetcher &_fetcher, List &_peds)
+	: fetcher(_fetcher), peds(_peds), reconstructions() {
+		N = 0;
+	}
+
+	Reconstructor(IntegerMatrix &_m, List &_peds)
+	: fetcher(* new R_GenotypeFetcher(_m)), peds(_peds), reconstructions() {
+		N = 0;
 		for (iid_t i = 0; i < peds.size(); i++) {
-			reconstructions.push_back(R_DiplotypeReconstructionSNPunordered(*ped));
-			N += peds[i].size();
+			R_DiplotypeReconstructionSNPunordered reconstruction(peds[i]);
+			reconstructions.push_back(reconstruction);
+			N += peds[i].N();
 		}
 	}
 
-	IntegerMatrix	drawFromHfs(const hfs_t &hfs, const vector<random_t> u) const {
+	IntegerMatrix	drawFromHfs(const NumericVector &hfsR, const NumericVector &u) const {
 		IntegerMatrix	m(N, 2);
 		iid_t			Ni = 0;
-
+		hfs_t			hfs(Rcpp::as< hfsv_t >(hfsR));
+		
 		for (iid_t i = 0; i <  peds.size(); Ni += peds[i].N(), i++) {
-			haplotypes_t	draw;
-			reconstructions[i].drawFromHfs(hfs, u[i], draw);
+			haplotypes_t	draw(reconstructions[i].drawFromHfs(hfs, u[i]));
 
 			// <A> not yet brought in correct order
 			for (iid_t j = 0; j < draw.size(); j += 2) {

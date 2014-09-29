@@ -6,6 +6,7 @@ library('devtools');
 library('Rcpp');
 
 if (1) {
+	Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
 	install('GeneticsHaplotype');
 	require('GeneticsHaplotype');
 	#y = Module('yada', mustStart = T);

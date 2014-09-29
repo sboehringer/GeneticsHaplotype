@@ -9,6 +9,7 @@
 #define DIPLOTYPERECONSTRUCTION_H
 
 #include <valarray>
+#include <memory>
 #include "valarray_ext.h"
 #include "genotype.h"
 #include "buffer.h"
@@ -35,7 +36,7 @@ public:
 	/*
 	 *	reconstruction methods
 	 */
-	virtual void	reconstruct(const GenotypeFetcher &fetcher);
+	virtual void	reconstruct(GenotypeFetcher &fetcher);
 	virtual void	print(void);
 };
 
@@ -56,7 +57,7 @@ public:
 	DiplotypeReconstructionSNPunordered();
 	~DiplotypeReconstructionSNPunordered();
 
-	virtual void	reconstruct(const GenotypeFetcher &fetcher);
+	virtual void	reconstruct(GenotypeFetcher &fetcher);
 	virtual void	print(void) const;
 
 	void			drawFromLogHfs(const hfs_t &lhfs, const random_t lu, haplotypes_t &draw) const;
@@ -99,22 +100,26 @@ inline diplotype_t diplotypeFromTemplate(diplotype_t t, int comb, haplotype_t he
 
 class DiplotypeReconstructionSNPunorderedRaw
 {
-	const vector<iid_t>		&founders;
-	const GenotypeFetcher	&fetcher;
+	vector<iid_t>			&founders;
+	GenotypeFetcher			&fetcher;
 	haplotypes_t			missing;
 	haplotypes_t			heterozygous;
 	// diplotype templates, pre-filled for homozygous positions
 	vector<diplotype_t>		templates;
-	CartesianIterator<int>	*founderIterator;
+	unique_ptr< CartesianIterator<int> >	founderIterator;
 
 public:
 	/*
 	 *	creation / destruction / boilerplate 
 	 */
-    DiplotypeReconstructionSNPunorderedRaw(Pedigree &_pedigree, const GenotypeFetcher &_fetcher) :
+// 	DiplotypeReconstructionSNPunorderedRaw() :
+// 		missing(), heterozygous(),templates()
+// 	{}
+	DiplotypeReconstructionSNPunorderedRaw(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
 		founders(_pedigree.founders()), fetcher(_fetcher),
-		missing(founders.size()), heterozygous(founders.size()),
-		templates(founders.size()), founderIterator(0) {
+		missing(founders.size()),
+		heterozygous(founders.size()),
+		templates(founders.size()) {
 
 		vector<int>	countFounders(founders.size());
 		for (iid_t i = 0; i < founders.size(); i++) {
@@ -123,10 +128,19 @@ public:
 			countFounders[i] = fetcher.countReconstructions(founders[i]);
 			templates[i] = fetcher.diplotypeTemplate(founders[i]);
 		}
-		founderIterator = new CartesianIterator<int>(countFounders);
+		founderIterator = unique_ptr< CartesianIterator<int> >(new CartesianIterator<int>(countFounders));
 	}
 	~DiplotypeReconstructionSNPunorderedRaw() {
-		delete founderIterator;
+	}
+
+	DiplotypeReconstructionSNPunorderedRaw &operator=(const DiplotypeReconstructionSNPunorderedRaw other) {
+		founders = other.founders;
+		fetcher = other.fetcher;
+		missing = other.missing;
+		heterozygous = other.heterozygous;
+		templates = other.templates;
+		//swap(founderIterator, other.founderIterator);
+		return *this;
 	}
 
 	// returns a possible unordered reconstruction for all founders

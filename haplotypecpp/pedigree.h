@@ -32,14 +32,12 @@ typedef vector<iid_t>	iidVector_t;
 template<class T> class vectorR : public vector<T> {
 public:
 	vectorR<T>() : vector<T>() {}
-	vectorR<T>(vector<iid_t> &other) : vector<T>(other) {}
-	vectorR<T>(IntegerVector &v) {
-		this->reserve(v.length());
-		for (int i = 0; i < v.length(); i++) (*this)[i] = v[i];
-	}
+	vectorR<T>(const vector<T> &other) : vector<T>(other) {}
+	vectorR<T>(const vectorR<T> &other) : vector<T>((vector<T>)other) {}
+	vectorR<T>(const IntegerVector &v) : vector<T>(Rcpp::as<vector< T> >) {}
 	//inline T	operator[](int i) { return (*this)[i]; }
 };
-
+#if 0
 template<class T> class matrixR : public vector< vectorR<T> > {
 public:
 	matrixR<T>() : vector< vectorR<T> >() {}
@@ -57,29 +55,71 @@ public:
 		}
 	}
 };
+#endif
+template<class T> class matrixR : public vector< T > {
+	int	nrow_;
+	int	ncol_;
+public:
+	matrixR<T>() : nrow_(0), ncol_(0), vector<T>() {}
+	matrixR<T>(int _nrow, vector< iid_t > &other)
+	: vector< T >(other), nrow_(_nrow), ncol_(other.size() / nrow_) { }
+	matrixR<T>(const vector< vector<T> > &other)
+	: vector< T >(other.size()? other.size() * other[0].size(): 0),
+	  nrow_(other.size()),
+	  ncol_(nrow_? other[0].size(): 0) 
+	{
+		this->reserve(other.size());
+		for (int r = 0; r < nrow_; r++)
+			for (int c = 0; c < ncol_; c++)
+				(*this)[r + c*nrow_] = other[r][c];
+	}
+	matrixR<T>(const IntegerMatrix &m)
+	: vector<T>(Rcpp::as<vector< T > >(m)), nrow_(m.nrow()), ncol_(m.ncol()) { }
+	matrixR<T>(const matrixR<T> &m)
+	: vector<T>( (vector< T >)m ), nrow_(m.nrow()), ncol_(m.ncol()) { }
+
+	inline T	at(int r, int c) const { return (*this)[r + nrow_*c]; }
+	inline int	nrow(void) const { return this->nrow_; }
+	inline int	ncol(void) const { return this->ncol_; }
+
+	inline matrixR<T>& operator=(const matrixR<T> &other) {
+		((vector<T>)(*this)) = (vector<T>)other;
+		nrow_ = other.nrow_;
+		ncol_ = other.ncol_;
+		return *this;
+	}
+};
 
 class Pedigree {
-	const vectorR<iid_t>	founder;	// iids of founders
-	const matrixR<iid_t>	itrio;		// inheritance trios: vector[0][0 .. 2] iid, mid, pid of trio 0, ...
+	vectorR<iid_t>	founder;	// iids of founders
+	matrixR<iid_t>	itrio;		// inheritance trios: vector[0][0 .. 2] iid, mid, pid of trio 0, ...
 
 	public:
 	/*
 	 * initialization, boilerplate	
 	 */
 	Pedigree() : founder(), itrio() {}
+	Pedigree(vectorR<iid_t> &_founder, matrixR<iid_t> &_itrio);
 	Pedigree(vector<iid_t> &_founder, vector< vector<iid_t> > &_itrio);
+	Pedigree(vector<iid_t> _founder, vector< vector<iid_t> > _itrio);
+	Pedigree(const Pedigree &other) : founder(other.founder), itrio(other.itrio) {}
 	~Pedigree() {}
 
 	/*
 	 * pedigree methods
 	 */
+	Pedigree &operator=(const Pedigree &other) {
+		founder = other.founder;
+		itrio = other.itrio;
+		return *this;
+	}
 	iid_t	sizeFounders(void) const { return founder.size(); }
-	iid_t	sizeItrios(void) const { return itrio.size(); }
-	inline iid_t	N(void) { return sizeFounders() + sizeItrios(); }
-	const vector<iid_t>	&founders(void) const { return founder; }
-	inline iid_t	trioIid(iid_t i) const { return itrio[i][0]; }
-	inline iid_t	trioMid(iid_t i) const { return itrio[i][1]; }
-	inline iid_t	trioPid(iid_t i) const { return itrio[i][2]; }
+	iid_t	sizeItrios(void) const { return itrio.nrow(); }
+	inline iid_t	N(void) const { return sizeFounders() + sizeItrios(); }
+	vector<iid_t>	&founders(void) const { return *(vector<iid_t> *)&founder; }
+	inline iid_t	trioIid(iid_t i) const { return itrio.at(i, 0); }
+	inline iid_t	trioMid(iid_t i) const { return itrio.at(i, 1); }
+	inline iid_t	trioPid(iid_t i) const { return itrio.at(i, 2); }
 };
 
 #endif
