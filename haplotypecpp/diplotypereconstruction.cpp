@@ -11,11 +11,6 @@
 
 DiplotypeReconstruction::~DiplotypeReconstruction() {}
 
-bool DiplotypeReconstruction::operator==(const DiplotypeReconstruction& other)
-{
-
-}
-
 void	DiplotypeReconstruction::reconstruct(GenotypeFetcher &fetcher) {
 	throw("abstract method called");
 }
@@ -78,11 +73,11 @@ inline haplotype_t	selectFromDiplotype(diplotype_t dt, bool index) {
 
 void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) {
 	DiplotypeReconstructionSNPunorderedRaw	founderReconst(pedigree, fetcher);
-	vector<diplotype_t>						dtFounder(pedigree.sizeFounders());
+	vector<diplotype_t>						dtFounder(Nfounders());
 	// all diplotypes
-	vector<diplotype_t>						dts(pedigree.sizeFounders() + pedigree.sizeItrios());
-	vector<bool>							bothTransm(pedigree.sizeItrios());
-	vector<bool>							iv(2*pedigree.sizeItrios());
+	vector<diplotype_t>						dts(Nfounders() + Nitrios());
+	vector<bool>							bothTransm(Nitrios());
+	vector<bool>							iv(2*Nitrios());
 	marker_t								cm = fetcher.countMarkers();
 
 	while (founderReconst.founderReconstruction(dtFounder)) {

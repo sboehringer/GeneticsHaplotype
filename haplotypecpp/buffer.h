@@ -38,8 +38,8 @@ public:
 		this->elementSize = other.elementSize;
 		this->N = other.N;
 
-		if (_buffer) free(buffer);
-		_buffer = (unsigned char *)calloc(elementSize, capacity);
+		if (_buffer) free(_buffer);
+		_buffer = (T *)calloc(elementSize, capacity);
 		if (!_buffer) throw("Out of memory.");
 		memcpy(_buffer, other.buffer(), elementSize * capacity);
 	}
@@ -49,9 +49,10 @@ public:
 	Buffer & operator=(Buffer &&other) {
 		if (&other == this) return *this;
 		N = other.N;
-		capacity = other.capcity;
-		elementSize = other.elementSize
-		std::swap(_buffer, other._buffer);
+		capacity = other.capacity;
+		elementSize = other.elementSize;
+		_buffer = other._buffer;
+		other._buffer = nullptr;
 		return *this;
 	}
 

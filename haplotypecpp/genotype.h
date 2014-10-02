@@ -60,6 +60,9 @@ class GenotypeFetcher {
 		for (int i = 0; i < countMarkers(); i++) if (genotype(id, i) == genotype_1) count++;
 		return count;
 	}
+	virtual iid_t		N(void) const {
+		throw("Abstract method called (# of individuals).");
+	}
 	// <N> this returns an upper bound, reconstruction algorithm has to check
 	// whether d1 <= d2 for reconstructions to be unordered
 	int			countReconstructions(iid_t id) const {
@@ -100,6 +103,15 @@ class GenotypeFetcher {
 		}
 		return r;
 	}
+	void	print(void) {
+		cout << "Genotypes:" << endl;
+		for (int i = 0; i < N(); i++) {
+			cout << "\t";
+			for (int j = 0; j < countMarkers(); j++)
+				cout << (j? ", ": "") << genotype(i, j);
+			cout << endl;	
+		}
+	}
 };
 
 template<typename T>
@@ -109,6 +121,7 @@ public:
 	GenotypeFetcherMatrix(vector< vector<T> > &gm) : genotypes(gm) {}
 
 	virtual	marker_t	countMarkers(void) const { return (marker_t)genotypes.size(); }
+	virtual iid_t		N(void) const { return (iid_t)genotypes[0].size(); }
 	virtual	genotype_t	genotype(iid_t id, marker_t marker) const {
 		return (genotype_t)genotypes[marker][id];
 	}

@@ -31,21 +31,21 @@ public:
 	 */
     DiplotypeReconstruction(Pedigree &_pedigree) : pedigree(_pedigree) {}
     ~DiplotypeReconstruction();
-    virtual bool operator==(const DiplotypeReconstruction& other);
-
 	/*
 	 *	reconstruction methods
 	 */
 	virtual void	reconstruct(GenotypeFetcher &fetcher);
-	virtual void	print(void);
+	virtual void	print(void) const;
+	inline iid_t	Nfounders(void) const { return pedigree.sizeFounders(); }
+	inline iid_t	Nitrios(void) const { return pedigree.sizeItrios(); }
 };
 
 typedef unsigned long long	buffer_t;
 
 class DiplotypeReconstructionSNPunordered : public DiplotypeReconstruction
 {
-	int					bitsFactor;
-	int					bitsHt;
+	int					bitsFactor_;
+	int					bitsHt_;
 	size_t				reconstructionSize;
 	Buffer<buffer_t>	reconstruction;
 public:
@@ -54,14 +54,38 @@ public:
 	 */
 	DiplotypeReconstructionSNPunordered(Pedigree &_pedigree,
 		int _bitsFactor = 6, int _bitsHt = 10, iid_t NreconstrBuffer = 1024);
-	DiplotypeReconstructionSNPunordered();
+	DiplotypeReconstructionSNPunordered(const DiplotypeReconstructionSNPunordered&) = delete;
 	~DiplotypeReconstructionSNPunordered();
+	DiplotypeReconstructionSNPunordered(DiplotypeReconstructionSNPunordered &&other)
+	: DiplotypeReconstruction(other.pedigree)
+	{
+		bitsFactor = other.bitsFactor;
+		bitsHt = other.bitsHt;
+		reconstructionSize = other.reconstructionSize;
+		reconstruction = std::move(other.reconstruction);
+	}
 
 	virtual void	reconstruct(GenotypeFetcher &fetcher);
 	virtual void	print(void) const;
 
 	void			drawFromLogHfs(const hfs_t &lhfs, const random_t lu, haplotypes_t &draw) const;
 	void			drawFromHfs(const hfs_t &hfs, const random_t u, haplotypes_t &draw) const;
+
+	inline int		bitsFactor(void) const { return bitsFactor_; }
+	inline int		bitsHt(void) const { return bitsHt_; }
+	inline buffer_t	*reconstructionAt(int i) const { return reconstruction.buffer(i); }
+};
+
+struct ReconstructionArray {
+	ReconstructionArray(DiplotypeReconstructionSNPunordered& d, int i)
+	: hts(d.reconstructionAt(i), 0, d.bitsHt(), 2*d.Nfounders()),
+	  iv(BitArrayAfter_e, hts, 1, 2*d.Nitrios()),
+	  factor(BitArrayAfter_e, iv, d.bitsFactor(), 1)
+	{}
+
+	BitArray<buffer_t, iid_t>	hts;
+	BitArray<buffer_t, iid_t>	iv;
+	BitArray<buffer_t, iid_t>	factor;
 };
 
 /*
@@ -133,13 +157,14 @@ public:
 	~DiplotypeReconstructionSNPunorderedRaw() {
 	}
 
-	DiplotypeReconstructionSNPunorderedRaw &operator=(const DiplotypeReconstructionSNPunorderedRaw other) {
+	DiplotypeReconstructionSNPunorderedRaw &operator=(DiplotypeReconstructionSNPunorderedRaw &&other) {
 		founders = other.founders;
 		fetcher = other.fetcher;
 		missing = other.missing;
 		heterozygous = other.heterozygous;
 		templates = other.templates;
-		//swap(founderIterator, other.founderIterator);
+		founderIterator.reset(other.founderIterator.get());
+		other.founderIterator.reset(nullptr);
 		return *this;
 	}
 

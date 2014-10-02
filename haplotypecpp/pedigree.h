@@ -100,8 +100,8 @@ class Pedigree {
 	 */
 	Pedigree() : founder(), itrio() {}
 	Pedigree(vectorR<iid_t> &_founder, matrixR<iid_t> &_itrio);
+	Pedigree(vector<iid_t> &_founder, IntegerMatrix &_itrio);
 	Pedigree(vector<iid_t> &_founder, vector< vector<iid_t> > &_itrio);
-	Pedigree(vector<iid_t> _founder, vector< vector<iid_t> > _itrio);
 	Pedigree(const Pedigree &other) : founder(other.founder), itrio(other.itrio) {}
 	~Pedigree() {}
 
@@ -120,6 +120,19 @@ class Pedigree {
 	inline iid_t	trioIid(iid_t i) const { return itrio.at(i, 0); }
 	inline iid_t	trioMid(iid_t i) const { return itrio.at(i, 1); }
 	inline iid_t	trioPid(iid_t i) const { return itrio.at(i, 2); }
+	void	print(void) const {
+
+		cout << "Founders: ";
+		for (int i = 0; i < founder.size(); i++) cout << (i? ", ": "") << founder[i];
+		cout << endl;
+		cout << "Itrios [" << itrio.nrow() << ", " << itrio.ncol() << "]:" << endl;
+		for (int i = 0; i < itrio.nrow(); i++) {
+			cout << "\t";
+			for (int j = 0; j < itrio.ncol(); j++) cout << (j? ", ": "") << itrio.at(i, j);
+			cout << endl;
+		}
+		cout << endl;
+	}
 };
 
 #endif
