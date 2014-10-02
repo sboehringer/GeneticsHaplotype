@@ -27,7 +27,17 @@ if (0) {
 	R = new(M$DiplotypeReconstructor, gts, peds);
 }
 
-if (1) {
-	hts = R$drawFromHfs(1:8, runif(1));
+if (0) {
 print(hts);
+}
+
+freqs = function(v)table(v)/sum(table(v))
+
+if (1) {
+	N = 1e4;
+	hts = sapply(1:N, function(i, ped, hfs) {
+		hts = R$drawFromHfs(hfs, runif(1));
+		as.vector(hts[ped$founders + 1, ])
+	}, ped = ped1, hfs = 1:8);
+	print(freqs(as.vector(hts)));
 }

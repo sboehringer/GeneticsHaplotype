@@ -81,6 +81,7 @@ int main(int argc, char **argv) {
 	
 #	define	Ndraws	10
 	const hfs_t		hfs1(vector<haplotypefs_t> { 1, 2, 3, 4, 5, 6, 7, 8 });
-	drawN(Ndraws, ped1, ped1Genotypes4, hfs1);
+	//drawN(Ndraws, ped1, ped1Genotypes4, hfs1);
+	drawN(Ndraws, ped1, ped1Genotypes1, hfs1);
 	return 0;
 }

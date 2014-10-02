@@ -59,8 +59,8 @@ public:
 	DiplotypeReconstructionSNPunordered(DiplotypeReconstructionSNPunordered &&other)
 	: DiplotypeReconstruction(other.pedigree)
 	{
-		bitsFactor = other.bitsFactor;
-		bitsHt = other.bitsHt;
+		bitsFactor_ = other.bitsFactor_;
+		bitsHt_ = other.bitsHt_;
 		reconstructionSize = other.reconstructionSize;
 		reconstruction = std::move(other.reconstruction);
 	}
@@ -77,10 +77,13 @@ public:
 };
 
 struct ReconstructionArray {
-	ReconstructionArray(DiplotypeReconstructionSNPunordered& d, int i)
-	: hts(d.reconstructionAt(i), 0, d.bitsHt(), 2*d.Nfounders()),
+	ReconstructionArray(DiplotypeReconstructionSNPunordered& d, buffer_t *e)
+	: hts(e, 0, d.bitsHt(), 2*d.Nfounders()),
 	  iv(BitArrayAfter_e, hts, 1, 2*d.Nitrios()),
 	  factor(BitArrayAfter_e, iv, d.bitsFactor(), 1)
+	{}
+	ReconstructionArray(DiplotypeReconstructionSNPunordered& d, int i)
+	: ReconstructionArray(d, d.reconstructionAt(i))
 	{}
 
 	BitArray<buffer_t, iid_t>	hts;

@@ -134,15 +134,15 @@ public:
 		iid_t			Ni = 0;
 		hfs_t			hfs(Rcpp::as< hfsv_t >(hfsR));
 		
-		cout << "drawFromHfs" << endl;
 		for (iid_t i = 0; i <  peds.size(); Ni += peds[i].N(), i++) {
-			haplotypes_t	draw(reconstructions[i].drawFromHfs(hfs, u[i]));
+			haplotypes_t	draw;
+			reconstructions[i].DiplotypeReconstructionSNPunordered::drawFromHfs(hfs, u[i], draw);
 
+			//cout << "draw: ";
+			//for (iid_t j = 0; j < draw.size(); j++) cout << (j? ", ": "") << draw[j];
+			//cout << endl;
 			// <A> not yet brought in correct order
-			for (iid_t j = 0; j < draw.size(); j += 2) {
-				m(j/2, 0) = draw[j];
-				m(j/2, 1) = draw[j + 1];
-			}
+			for (iid_t j = 0; j < draw.size(); j ++) m(Ni + j/2, j%2) = draw[j];
 		}
 		return wrap(m);
 	}

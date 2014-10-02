@@ -15,7 +15,7 @@ void	DiplotypeReconstruction::reconstruct(GenotypeFetcher &fetcher) {
 	throw("abstract method called");
 }
 
-void	DiplotypeReconstruction::print(void){
+void	DiplotypeReconstruction::print(void) const {
 	throw("abstract method called");
 }
 
@@ -119,21 +119,19 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 		// encode reconstruction
 		buffer_t	*e = reconstruction.push();
 		int			factor = 0;
-		BitArray<buffer_t, iid_t>	Ahts(e, 0, bitsHt, 2*dtFounder.size());
-		BitArray<buffer_t, iid_t>	Aiv(BitArrayAfter_e, Ahts, 1, 2*pedigree.sizeItrios());
-		BitArray<buffer_t, iid_t>	Afactor(BitArrayAfter_e, Aiv, bitsFactor, 1);
+		ReconstructionArray	r(*this, e);
 
-		for (iid_t i = 0; i < dtFounder.size(); i++) {
-			Ahts.set(2*i,     dtFounder[i].d1);
-			Ahts.set(2*i + 1, dtFounder[i].d2);
+		for (iid_t i = 0; i < Nfounders(); i++) {
+			r.hts.set(2*i,     dtFounder[i].d1);
+			r.hts.set(2*i + 1, dtFounder[i].d2);
 			if (dtFounder[i].d1 != dtFounder[i].d2) factor++;
 		}
-		for (iid_t i = 0; i < pedigree.sizeItrios(); i++) {
-			Aiv.set(2*i,	iv[2*i]);
-			Aiv.set(2*i + 1,iv[2*i + 1]);
+		for (iid_t i = 0; i < Nitrios(); i++) {
+			r.iv.set(2*i,	 iv[2*i]);
+			r.iv.set(2*i + 1,iv[2*i + 1]);
 			if (bothTransm[i]) factor++;
 		}
-		Afactor.set(0, factor);
+		r.factor.set(0, factor);
 
 	}
 // 	//CartesianIterator<int>	&i = *(this->founderIterator(fetcher));
@@ -145,53 +143,48 @@ DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
 	Pedigree &_pedigree, int _bitsFactor, int _bitsHt, iid_t NreconstrBuffer)
 	:
 	DiplotypeReconstruction(_pedigree),
-	bitsFactor(_bitsFactor),
-	bitsHt(_bitsHt),
+	bitsFactor_(_bitsFactor),
+	bitsHt_(_bitsHt),
 	reconstructionSize(roundUpBitsToBytes<buffer_t>(
-		bitsFactor + bitsHt * 2 * pedigree.sizeFounders() + 2 * pedigree.sizeItrios())),
+		bitsFactor_ + bitsHt_ * 2 * Nfounders() + 2 * Nitrios())),
 	reconstruction(reconstructionSize, NreconstrBuffer) {
 	cout << "reconstructionSize: " << reconstructionSize
-		<< " pedigreesize: " << pedigree.sizeFounders() << ", " << pedigree.sizeItrios()
-		<< " bitsHt: " << bitsHt << " bitsFactor: " << bitsFactor
-		<< " Size: " << _bitsFactor + _bitsHt * 2 * _pedigree.sizeFounders() + 2 * _pedigree.sizeItrios()
+		<< " pedigreesize: " << Nfounders() << ", " << Nitrios()
+		<< " bitsHt: " << bitsHt_ << " bitsFactor: " << bitsFactor_
+		<< " Size: " << _bitsFactor + _bitsHt * 2 * Nfounders() + 2 * Nitrios()
 		<< endl;
 }
 
-	
+typedef DiplotypeReconstructionSNPunordered	DRU;
+
 void	DiplotypeReconstructionSNPunordered::print(void) const {
 	cout << "\tReconstruction size: " << reconstruction.size() << endl;
 	for (int j = 0; j < reconstruction.size(); j++) {
-		buffer_t					*e = reconstruction.buffer(j);
-		BitArray<buffer_t, iid_t>	Ahts(e, 0, bitsHt, 2*pedigree.sizeFounders());
-		BitArray<buffer_t, iid_t>	Aiv(BitArrayAfter_e, Ahts, 1, 2*pedigree.sizeItrios());
-		BitArray<buffer_t, iid_t>	Afactor(BitArrayAfter_e, Aiv, bitsFactor, 1);
+		ReconstructionArray	r(*(DRU *)this, j);
 
 		cout << "\tFounders[";
-		for (iid_t i = 0; i < pedigree.sizeFounders(); i++)
-			cout << (i? " ": "") << "(" << Ahts[2*i] << ", " << Ahts[2*i + 1] << ")";
+		for (iid_t i = 0; i < Nfounders(); i++)
+			cout << (i? " ": "") << "(" << r.hts[2*i] << ", " << r.hts[2*i + 1] << ")";
 		cout << "] IV[";
-		for (iid_t i = 0; i < pedigree.sizeItrios(); i++) {
-			cout << Aiv[2*i] << Aiv[2*i + 1];
+		for (iid_t i = 0; i < Nitrios(); i++) {
+			cout << r.iv[2*i] << r.iv[2*i + 1];
 		}
-		cout << "] C[" << Afactor[0] << "]" << endl;
+		cout << "] C[" << r.factor[0] << "]" << endl;
 	}
 }
 
 void	DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfs_t &lhfs, const random_t lu,
 															haplotypes_t &draw) const {
-	int	Nfounders = pedigree.sizeFounders();
 	/*
 	 * compute log-prob per reconstruction (up to normalizing factor)
 	 */
 	Valarray<haplotypefs_t>	famlh(0, (size_t)reconstruction.size());
 	for (int i = 0; i < famlh.size(); i++) {
-		BitArray<buffer_t, iid_t>	Ahts(reconstruction.buffer(i), 0, bitsHt, 2*Nfounders);
-		BitArray<buffer_t, iid_t>	Aiv(BitArrayAfter_e, Ahts, 1, 2*pedigree.sizeItrios());
-		BitArray<buffer_t, iid_t>	Afactor(BitArrayAfter_e, Aiv, bitsFactor, 1);
+		ReconstructionArray	r(*(DRU *)this, i);
 
-		famlh[i] = Afactor[0] * M_LN2;
-		for (int j = 0; j < 2 * Nfounders; j++) {
-			famlh[i] += lhfs[Ahts[j]];
+		famlh[i] = r.factor[0] * M_LN2;
+		for (int j = 0; j < 2 * Nfounders(); j++) {
+			famlh[i] += lhfs[r.hts[j]];
 		}
 	}
 
@@ -205,15 +198,13 @@ void	DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfs_t &lhfs, cons
 	/*
 	 * copy diplotypes
 	 */
-	draw.resize(2*Nfounders + 2*pedigree.sizeItrios());
-	BitArray<buffer_t, iid_t>	Ahts(reconstruction.buffer(i), 0, bitsHt, 2*Nfounders);
-	BitArray<buffer_t, iid_t>	Aiv(BitArrayAfter_e, Ahts, 1, 2*pedigree.sizeItrios());
-	BitArray<buffer_t, iid_t>	Afactor(BitArrayAfter_e, Aiv, bitsFactor, 1);
+	draw.resize(2*Nfounders() + 2*Nitrios());
+	ReconstructionArray	r(*(DRU *)this, i);
 
-	for (int j = 0; j < 2 * Nfounders; j++) draw[j] = Ahts[j];
-	for (int j = 0; j < pedigree.sizeItrios(); j++) {
-		draw[2*Nfounders + 2*j] = draw[2*pedigree.trioMid(j) + Aiv[2*j]];
-		draw[2*Nfounders + 2*j + 1] = draw[2*pedigree.trioPid(j) + Aiv[2*j + 1]];
+	for (int j = 0; j < 2 * Nfounders(); j++) draw[j] = r.hts[j];
+	for (int j = 0; j < Nitrios(); j++) {
+		draw[2*Nfounders() + 2*j]     = draw[2*pedigree.trioMid(j) + r.iv[2*j]];
+		draw[2*Nfounders() + 2*j + 1] = draw[2*pedigree.trioPid(j) + r.iv[2*j + 1]];
 	}
 
 }
