@@ -27,7 +27,7 @@ if (0) {
 }
 
 if (0) {
-print(hts);
+	print(hts);
 }
 
 freqs = function(v)table(v)/sum(table(v))
@@ -73,7 +73,7 @@ if (0) {
 	plotPedigree(ped);
 }
 
-if (1) {
+if (0) {
 	N = 5;
 	pedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
 		c(	1, NA, NA,
@@ -88,4 +88,13 @@ if (1) {
 	s = simulateDiplotypes(pedSplit, hfs = 1:8);
 
 	plotPedigree(ped, tag = apply(s, 1, function(r)paste(r, collapse = '/')));
+}
+
+if (1) {
+	print(diplotypes2gts(s));
+	print(diplotypes2gts(s, summarize = sum));
+
+	dtTags = apply(s, 1, function(r)paste(r, collapse = '/'));
+	gtTags = apply(diplotypes2gts(s, summarize = sum), 1, function(r)paste(r, collapse = ':'));
+	plotPedigree(ped, tag = paste(dtTags, gtTags, sep = "\n"));
 }
