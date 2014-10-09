@@ -53,9 +53,10 @@ void	reconstruct(pedigree_t &ped, vector<g> &gts) {
 void	draw(pedigree_t &ped, vector<g> &gts, const random_t u, const hfs_t &hfs) {
 	Pedigree					pedigree(ped.founder, ped.trios);
 	GenotypeFetcherMatrix<int>	gtF(gts);
+	GenotypeFetcherOffset		gfo(gtF, 0);
 
 	DiplotypeReconstructionSNPunordered	dts(pedigree);
-	dts.reconstruct(gtF);
+	dts.reconstruct(gfo);
 // 	dts.print();
 
 	haplotypes_t hts(0);

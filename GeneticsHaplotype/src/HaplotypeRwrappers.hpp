@@ -77,13 +77,15 @@ public:
 
 	void	addPedigrees(List &pedvector) {
 		reserve(pedvector.size());
-		cout << "mysize: " << size() << endl;
+		//cout << "mycapcity: " << capacity() << " pedvector size:" << pedvector.size() << endl;
 		for (int i = 0; i < pedvector.size(); i++) {
 			const List		&rped(Rcpp::as<List>(pedvector[i]));
+			//cout << "pedigree: " << i << endl;
 			vector<iid_t>	founders(Rcpp::as< vector<iid_t> >(rped["founders"]));
 			IntegerMatrix	itrios(Rcpp::as<IntegerMatrix>(rped["itrios"]));
+			//cout << "got list elements" << endl;
 			const Pedigree	ped(founders, itrios);
-			ped.print();
+			//ped.print();
 			push_back(ped);
 		}
 	}
@@ -117,16 +119,19 @@ public:
 		this->reconstruct();
 	}
 	void	reconstruct(void) {
-		cout << "#peds: " << peds.size() << endl;
-		fetcher.print();
-		for (iid_t i = 0; i < peds.size(); i++) {
+		//cout << "#peds: " << peds.size() << endl;
+		//fetcher.print();
+		iid_t	Ncum = 0;
+		for (iid_t i = 0; i < peds.size(); i++, Ncum += peds[i].N()) {
+			//cout << "Ncum: " << Ncum << endl;
 			R_DiplotypeReconstructionSNPunordered reconstruction(peds[i]);
-			peds[i].print();
-			reconstruction.reconstruct((GenotypeFetcher &)fetcher);
-			reconstruction.print();
+			GenotypeFetcherOffset	pedfetcher((GenotypeFetcher &)fetcher, Ncum);
+			//peds[i].print();
+			reconstruction.reconstruct((GenotypeFetcher &)pedfetcher);
+			//reconstruction.print();
 			reconstructions.push_back(std::move(reconstruction));
 		}
-		cout << "did reconstruct" << endl;
+		//cout << "did reconstruct" << endl;
 	}
 
 	IntegerMatrix	drawFromHfs(const NumericVector &hfsR, const NumericVector &u) const {

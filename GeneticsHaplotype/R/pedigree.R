@@ -52,7 +52,9 @@ ped2ivTrios = function(ped) {
 	# original ped sorted according to depth (max - number of ancestors in tree)
 	peds = data.frame(pedu, depth = depth);
 	trios = peds[peds$depth > 0, ];
-	r = list(trios = trios[order(trios$depth), c('iid', 'mid', 'pid')], founders = peds$iid[peds$depth == 0]);
+	r = list(
+		itrios = trios[order(trios$depth), c('iid', 'mid', 'pid')],
+		founders = peds$iid[peds$depth == 0]);
 	r
 }
 
@@ -60,10 +62,16 @@ pedSplit2ivTrios = function(ped) {
 	r = lapply(unique(ped$fid), function(fid)ped2ivTrios(ped[ped$fid == fid, ]));
 }
 
+pedsItrios2rcpp = function(peds) {
+	lapply(peds, function(ped) {
+		list(itrios = as.matrix(ped$itrios) - 1, founders = ped$founders -1 )
+	})
+}
+
 # sex: 0: female, 1: male, assume normalized id 1:N
 ivTriosInferSex = function(ped) {
-	N = length(ped$founders) + nrow(ped$trios);
-	mapping = apply(ped$trios, 1, function(r) with(as.list(r), c(mid, 0, pid, 1)));
+	N = length(ped$founders) + nrow(ped$itrios);
+	mapping = apply(ped$itrios, 1, function(r) with(as.list(r), c(mid, 0, pid, 1)));
 	mapping = matrix(as.vector(mapping), byrow = T, ncol = 2);
 	# add as yet unmapped ids
 	mapping = unique(rbind(mapping, as.matrix(data.frame(iid = setdiff(1:N, mapping[, 1]), sex = NA))));
@@ -82,11 +90,21 @@ pedInverseOrder = function(ped) {
 	o = order_align(idOrig, idUniq);
 	o
 }
+pedForwardOrder = function(ped) {
+	idOrig = pedUniqueId(ped);
+	idUniq = unlist(lapply(unique(ped$fid), function(fid)pedUniqueId(ped[ped$fid == fid, ], max(ped$iid))));
+	o = order_align(idUniq, idOrig);
+	o
+}
 
 pedInferSex = function(ped) {
 	peds = pedSplit2ivTrios(ped);
 	sexes = unlist(lapply(peds, ivTriosInferSex));
 	sexes[pedInverseOrder(ped)]
+}
+
+pedFounders = function(ped) {
+	apply(ped[, c('mid', 'pid')], 1, function(i)all(is.na(i)))
 }
 
 plotPedigree = plotPedigree_kinship2 = function(ped, tag = '') {
@@ -99,11 +117,33 @@ plotPedigree = plotPedigree_kinship2 = function(ped, tag = '') {
 	# <p> plot using function pedigree
 	pedPlot = with(pedu, pedigree(iid, pid, mid, sex, affected = rep(0, nrow(pedu))));
 	par(xpd = T);
-	plot(pedPlot, id = paste(pedu$iid, tag, sep = "\n"));
+	plot(pedPlot, id = paste(paste(ped$iid, ped$fid, sep = '*'), tag, sep = "\n"));
 }
 
 plotPedigree_gap = function(ped) {
 	pedu = ped2uniqueId(ped);
 	require('gap');
 	# ... pedtodot
+}
+
+# NfamPerRow: #families per row / #rows
+plotPedigrees = function(ped, tag = '', NfamPerRow = 5) {
+	o = order(ped$fid);
+	# re-order ped by families
+	ped = ped[o, ];
+	tag = tag[o];
+	fids = unique(ped$fid);
+
+	# split families into rows
+	Nrows = ceiling(length(fids)/NfamPerRow);
+	layout(matrix(1:Nrows, ncol = 1));
+	idcs = splitListIndcs(length(fids), Nrows);
+
+	# plot
+	apply(idcs, 1, function(i) {
+		fidI = fids[i[1]:i[2]];
+		pedI = which(ped$fid %in% fidI);
+		plotPedigree(ped[pedI, ], tag[pedI]);
+		NULL
+	});
 }

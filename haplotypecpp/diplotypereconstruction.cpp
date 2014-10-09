@@ -148,11 +148,14 @@ DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
 	reconstructionSize(roundUpBitsToBytes<buffer_t>(
 		bitsFactor_ + bitsHt_ * 2 * Nfounders() + 2 * Nitrios())),
 	reconstruction(reconstructionSize, NreconstrBuffer) {
+#	if 0
 	cout << "reconstructionSize: " << reconstructionSize
 		<< " pedigreesize: " << Nfounders() << ", " << Nitrios()
 		<< " bitsHt: " << bitsHt_ << " bitsFactor: " << bitsFactor_
 		<< " Size: " << _bitsFactor + _bitsHt * 2 * Nfounders() + 2 * Nitrios()
 		<< endl;
+
+#	endif
 }
 
 typedef DiplotypeReconstructionSNPunordered	DRU;

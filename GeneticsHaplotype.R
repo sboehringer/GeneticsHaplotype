@@ -12,6 +12,8 @@ if (F) {
 	system('rm GeneticsHaplotype/src/*.o GeneticsHaplotype/src/*.so');
 	Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
 	install('GeneticsHaplotype', threads = 6);
+}
+if (T) {
 	require('GeneticsHaplotype');
 	M = Module('Reconstructor', PACKAGE = 'GeneticsHaplotype');
 }
@@ -73,8 +75,8 @@ if (0) {
 	plotPedigree(ped);
 }
 
-if (0) {
-	N = 5;
+if (1) {
+	N = 25;
 	pedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
 		c(	1, NA, NA,
 			2, NA, NA,
@@ -82,19 +84,54 @@ if (0) {
 			4, NA, NA,
 			5, 3, 4
 	), byrow = T, ncol = 3));
-	ped = familiesFromTemplate(pedTemplate, N = 5);
-	print(data.frame(ped, sex = pedInferSex(ped)));
-	pedSplit = pedSplit2ivTrios(ped);
-	s = simulateDiplotypes(pedSplit, hfs = 1:8);
+	ped = familiesFromTemplate(pedTemplate, N = N);
+	#print(data.frame(ped, sex = pedInferSex(ped)));
 
-	plotPedigree(ped, tag = apply(s, 1, function(r)paste(r, collapse = '/')));
+	dts = simulateDiplotypesPed(ped, 1:8);
+	#plotPedigrees(ped, tag = apply(dts, 1, function(r)paste(r, collapse = '|')));
+}
+
+if (0) {
+	gts = diplotypes2gts(dts, summarize = sum);
+	dtfs = diplotypeFs(ped, dts);
+	print(dtfs);
+	print(diplotypes2gts(dts));
+	print(diplotypes2gts(dts, summarize = sum));
+
+	dtTags = apply(s, 1, function(r)paste(r, collapse = '/'));
+	gtTags = apply(gts, 1, function(r)paste(r, collapse = ':'));
+	plotPedigrees(ped, tag = paste(dtTags, gtTags, sep = "\n"));
+
+}
+
+simulateFromTemplate = function(pedTemplate, N = 25, hfs = 1:8) {
+	ped = familiesFromTemplate(pedTemplate, N = N);
+	dts = simulateDiplotypesPed(ped, hfs);
+	gts = diplotypes2gts(dts, summarize = sum);
+	dtfs = diplotypeFs(ped, dts);
+	o = pedForwardOrder(ped);
+	pedO = ped[o, ];
+
+	r = list(ped = pedO, dts = dts, gts = gts, dtfs = dtfs, peds = pedSplit2ivTrios(ped));
+	r
 }
 
 if (1) {
-	print(diplotypes2gts(s));
-	print(diplotypes2gts(s, summarize = sum));
-
-	dtTags = apply(s, 1, function(r)paste(r, collapse = '/'));
-	gtTags = apply(diplotypes2gts(s, summarize = sum), 1, function(r)paste(r, collapse = ':'));
-	plotPedigree(ped, tag = paste(dtTags, gtTags, sep = "\n"));
+	Nsims = c(1e2, 1e3, 1e4);
+	Ns = c(25, 50, 100, 400);
+	Nsim = 1e3;
+	mses = sapply(Ns, function(N) {
+		sim = simulateFromTemplate(pedTemplate, N, hfs = 1:8);
+		R = new(M$DiplotypeReconstructor, sim$gts, pedsItrios2rcpp(sim$peds));
+		dts = sapply(1:Nsim, function(i) {
+			dtsS = R$drawFromHfs(sim$dtfs, runif(length(sim$peds)));
+			diplotypeFs(sim$ped, dtsS)
+		});
+		dtsMean = apply(dts, 1, mean);
+		dtsSd = apply(dts, 1, sd);
+		mse = mean((dtsMean - sim$dtfs)^2);
+		cat(Sprintf('N: %{N}d MSE:%{mse}.2e\n'));
+		list(Nsim = Nsim, mse = mse, dtsMean = dtsMean, dtsSd = dtsSd)
+	});
+	
 }

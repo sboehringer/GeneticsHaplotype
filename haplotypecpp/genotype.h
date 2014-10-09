@@ -114,15 +114,37 @@ class GenotypeFetcher {
 	}
 };
 
+/*
+ * individuals are indexed 0, ..., N_i per family
+ * all genotypes are provided in a matrix
+ * this class helps to wrap access to genotypes
+ * order of genotypes has to be correct and might need re-ordering <N>
+ */
+class GenotypeFetcherOffset : public GenotypeFetcher {
+	iid_t			offset;
+	GenotypeFetcher	&fetcher;
+public:
+	GenotypeFetcherOffset(GenotypeFetcher &_fetcher, iid_t _offset)
+	: offset(_offset), fetcher(_fetcher), GenotypeFetcher() {}
+	virtual ~GenotypeFetcherOffset(){}
+
+	marker_t	countMarkers(void) const { return fetcher.countMarkers(); }
+	iid_t		N(void) const { return fetcher.N(); }
+	genotype_t	genotype(iid_t id, marker_t marker) const {
+		return fetcher.genotype(id + offset, marker);
+	}
+
+};
+
 template<typename T>
 class GenotypeFetcherMatrix : public GenotypeFetcher {
 	vector< vector<T> >	&genotypes;
 public:
 	GenotypeFetcherMatrix(vector< vector<T> > &gm) : genotypes(gm) {}
 
-	virtual	marker_t	countMarkers(void) const { return (marker_t)genotypes.size(); }
-	virtual iid_t		N(void) const { return (iid_t)genotypes[0].size(); }
-	virtual	genotype_t	genotype(iid_t id, marker_t marker) const {
+	marker_t	countMarkers(void) const { return (marker_t)genotypes.size(); }
+	iid_t		N(void) const { return (iid_t)genotypes[0].size(); }
+	genotype_t	genotype(iid_t id, marker_t marker) const {
 		return (genotype_t)genotypes[marker][id];
 	}
 };

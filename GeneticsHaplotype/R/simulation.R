@@ -7,7 +7,7 @@ simulateDiplotypes = function(peds, hfs) {
 	Nfounder = sapply(peds, function(e)length(e$founder));
 	Nfcum = c(0, cumsum(Nfounder));
 	Nfounders = sum(Nfounder);
-	Nitrio = sapply(peds, function(e)nrow(e$trios));
+	Nitrio = sapply(peds, function(e)nrow(e$itrios));
 	Nicum = c(0, cumsum(Nitrio));
 	Nitrios = sum(Nitrio);
 
@@ -18,8 +18,8 @@ simulateDiplotypes = function(peds, hfs) {
 	dts = lapply(seq_along(peds), function(i) {
 		dtsF = matrix(0, ncol = 2, nrow = Nfounder[i] + Nitrio[i]);
 		dtsF[peds[[i]]$founders, ] = dts[(Nfcum[i] + 1):(Nfcum[i] + Nfounder[i]), ];
-		for (j in 1:nrow(peds[[i]]$trios)) {
-			trio = peds[[i]]$trios[j, ];
+		for (j in 1:nrow(peds[[i]]$itrios)) {
+			trio = peds[[i]]$itrios[j, ];
 			dtsF[trio$iid, ] = c(
 				dtsF[trio$mid, ][iv[Nicum[i] + 2*j - 1]],
 				dtsF[trio$pid, ][iv[Nicum[i] + 2*j]]);
@@ -34,6 +34,19 @@ simulateDiplotypes = function(peds, hfs) {
 familiesFromTemplate = function(template, N) {
 	peds = lapply(1:N, function(i)data.frame(fid = i, template));
 	do.call(rbind, peds)
+}
+
+simulateDiplotypesPed = function(ped, hfs) {
+	pedSplit = pedSplit2ivTrios(ped);
+	dts = simulateDiplotypes(pedSplit, hfs = hfs);
+	dts
+}
+
+diplotypeFs = function(ped, dts, countLoci = ceiling(log2(max(dts) + 1))) {
+	dts = dts[pedFounders(ped), ];
+	t0 = table.n(as.vector(dts), min = 0, n = 2^countLoci - 1);
+	r = t0 / sum(t0);
+	r
 }
 
 # convert diplotypes to genotypes
