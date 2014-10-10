@@ -4,9 +4,6 @@
 
 library('devtools');
 library('Rcpp');
-source('GeneticsHaplotype/R/pedigree.R');
-source('GeneticsHaplotype/R/simulation.R');
-source('RgenericAll.R');
 
 if (F) {
 	system('rm GeneticsHaplotype/src/*.o GeneticsHaplotype/src/*.so');
