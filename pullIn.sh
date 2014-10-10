@@ -4,4 +4,8 @@
 
 # copy files from other repositories (main versions there)
 
+# c++
 cp ~/src/bitfield/bitfield/BitField.hpp haplotypecpp
+
+# R
+cp ~/Rscripts/Rdata.R GeneticsHaplotype/R
