@@ -118,7 +118,7 @@ simulateFromTemplate = function(pedTemplate, N = 25, hfs = 1:8) {
 
 if (1) {
 	Nsims = c(1e2, 1e3, 1e4);
-	Ns = c(25, 50, 100, 400);
+	Ns = c(25, 50, 100, 400, 800);
 	Nsim = 1e3;
 	mses = sapply(Ns, function(N) {
 		sim = simulateFromTemplate(pedTemplate, N, hfs = 1:8);
