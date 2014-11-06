@@ -40,6 +40,24 @@ vector<g>	ped1Genotypes4 {	// genotypes by row, individuals by column 0..5
 	g { 1, 1, 1, 1, 1, 1 },
 	g { 1, 1, 1, 1, 1, 1 }
 };
+vector<g>	ped1Genotypes5 {	// genotypes by row, individuals by column 0..5
+	g { 2, 2, 2, 2, 2, 2 },
+	g { 0, 0, 0, 0, 0, 0 },
+	g { 1, 1, 1, 1, 1, 1 }
+};
+
+
+pedigree_t	ped2 {
+	{ 0, 1, 3 },
+	{ 	vector<iid_t> { 2, 0, 1 },
+		vector<iid_t> { 4, 2, 3 } }
+};
+
+vector<g>	ped2Genotypes1 {	// genotypes by row, individuals by column 0..5
+	g { 1, 2, 2, 2, 2 },
+	g { 0, 1, 1, 0, 1 },
+	g { 1, 1, 1, 1, 1 }
+};
 
 void	reconstruct(pedigree_t &ped, vector<g> &gts) {
 	Pedigree					pedigree(ped.founder, ped.trios);
@@ -79,10 +97,10 @@ int main(int argc, char **argv) {
 	reconstruct(ped1, ped1Genotypes3);
 	reconstruct(ped1, ped1Genotypes4);
 #	endif
-	
+
 #	define	Ndraws	10
-	const hfs_t		hfs1(vector<haplotypefs_t> { 1, 2, 3, 4, 5, 6, 7, 8 });
+	const hfs_t		hfs1(vector<haplotypefs_t> { 1, 1, 1, 1, 5, 6, 7, 8 });
 	//drawN(Ndraws, ped1, ped1Genotypes4, hfs1);
-	drawN(Ndraws, ped1, ped1Genotypes1, hfs1);
+	drawN(Ndraws, ped2, ped2Genotypes1, hfs1);
 	return 0;
 }

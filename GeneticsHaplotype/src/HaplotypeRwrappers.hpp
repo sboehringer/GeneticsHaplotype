@@ -146,7 +146,6 @@ public:
 			//cout << "draw: ";
 			//for (iid_t j = 0; j < draw.size(); j++) cout << (j? ", ": "") << draw[j];
 			//cout << endl;
-			// <A> not yet brought in correct order
 			for (iid_t j = 0; j < draw.size(); j ++) m(Ni + j/2, j%2) = draw[j];
 		}
 		return wrap(m);

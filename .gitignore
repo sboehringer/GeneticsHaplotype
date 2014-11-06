@@ -1,3 +1,7 @@
 *.o
 *.so
 .directory
+simulations
+RcomputeResources.R
+RgenericAll.R
+

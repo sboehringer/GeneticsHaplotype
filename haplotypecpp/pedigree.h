@@ -117,6 +117,7 @@ class Pedigree {
 	iid_t	sizeItrios(void) const { return itrio.nrow(); }
 	inline iid_t	N(void) const { return sizeFounders() + sizeItrios(); }
 	vector<iid_t>	&founders(void) const { return *(vector<iid_t> *)&founder; }
+	inline iid_t	founderAt(iid_t i) const { return founder[i]; }
 	inline iid_t	trioIid(iid_t i) const { return itrio.at(i, 0); }
 	inline iid_t	trioMid(iid_t i) const { return itrio.at(i, 1); }
 	inline iid_t	trioPid(iid_t i) const { return itrio.at(i, 2); }

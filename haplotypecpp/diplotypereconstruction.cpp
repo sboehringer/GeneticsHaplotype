@@ -99,6 +99,10 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 			if (gtcO != gtc00 && gtcO != gtc01 && gtcO != gtc10 && gtcO != gtc11) break;
 			// compute possible inheritance vector: first haplotype from grandmother =^= 0
 			// if needed to make both entries of iv consistent (<N> special case: bothTransm)
+#			if 1
+			iv[2*j] = !(gtcO == gtc00 || gtcO == gtc10);
+			iv[2*j + 1] = !(gtcO == gtc00 || gtcO == gtc01);
+#			else
 			if ((gtcO == gtc00 || gtcO == gtc10)) {
 				iv[2*j] = 0;
 				iv[2*j + 1] = gtcO == gtc10;
@@ -106,6 +110,7 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 				iv[2*j] = 1;
 				iv[2*j + 1]	= gtcO == gtc11;
 			}
+#			endif
 			// save offspring diplotype for reference for other I-trios
 			dts[id] = (diplotype_t){
 				selectFromDiplotype(dtm, iv[2*j]),
@@ -204,10 +209,13 @@ void	DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfs_t &lhfs, cons
 	draw.resize(2*Nfounders() + 2*Nitrios());
 	ReconstructionArray	r(*(DRU *)this, i);
 
-	for (int j = 0; j < 2 * Nfounders(); j++) draw[j] = r.hts[j];
+	for (int j = 0; j < Nfounders(); j++) {
+		draw[2*pedigree.founderAt(j)]     = r.hts[2*j];
+		draw[2*pedigree.founderAt(j) + 1] = r.hts[2*j + 1];
+	}
 	for (int j = 0; j < Nitrios(); j++) {
-		draw[2*Nfounders() + 2*j]     = draw[2*pedigree.trioMid(j) + r.iv[2*j]];
-		draw[2*Nfounders() + 2*j + 1] = draw[2*pedigree.trioPid(j) + r.iv[2*j + 1]];
+		draw[2*pedigree.trioIid(j)]     = draw[2*pedigree.trioMid(j) + r.iv[2*j]];
+		draw[2*pedigree.trioIid(j) + 1] = draw[2*pedigree.trioPid(j) + r.iv[2*j + 1]];
 	}
 
 }

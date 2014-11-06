@@ -147,3 +147,13 @@ plotPedigrees = function(ped, tag = '', NfamPerRow = 5) {
 		NULL
 	});
 }
+
+# c++ code orders correctly as of 6.11.2014
+# # drawn haplotypes are ordered by: Founders, IV-trios
+# reorderDraw = function(peds) {
+# 	Ns = c(0, cumsum(sapply(peds, function(p)(length(p$founders) + nrow(p$itrios))))) + 1;
+# 	o = unlist(lapply(1:length(peds), function(i) {
+# 		c(peds[[i]]$founders, peds[[i]]$itrios[, 'iid']) + Ns[i]
+# 	}));
+# 	o
+# }

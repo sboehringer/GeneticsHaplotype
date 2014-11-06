@@ -68,3 +68,68 @@ diplotypes2gts = function(dts, countLoci = ceiling(log2(max(dts) + 1)), summariz
 diplotypes2gtsDose = function(dt, countLoci = ceiling(log2(max(dts) + 1)), summarize = sum, ...) {
 	diplotypes2gts(dt, countLoci, summarize, ...)
 }
+
+#
+#	<p> simulation functions
+#
+
+simulateFromPed = function(ped, hfs = 1:8) {
+	dts = simulateDiplotypesPed(ped, hfs);
+	gts = diplotypes2gts(dts, summarize = sum);
+	dtfs = diplotypeFs(ped, dts);
+	o = pedForwardOrder(ped);
+	pedO = ped[o, ];
+
+	r = list(ped = pedO, dts = dts, gts = gts, dtfs = dtfs, peds = pedSplit2ivTrios(ped));
+	r
+}
+simulateFromTemplate = function(pedTemplate, N = 25, hfs = 1:8) {
+	simulateFromPed(familiesFromTemplate(pedTemplate, N = N), hfs)
+}
+
+vector.std = function(v, C = 1)(C * v / sum(v))
+simulationFromPed = function(ped, hfs, Nsim, module) {
+	hfs = vector.std(hfs);
+	sim = simulateFromPed(ped, hfs = hfs);
+	R = new(module$DiplotypeReconstructor, sim$gts, pedsItrios2rcpp(sim$peds));
+	dts = sapply(1:Nsim, function(i) {
+		dtsS = R$drawFromHfs(sim$dtfs, runif(length(sim$peds)));
+		diplotypeFs(sim$ped, dtsS)
+	});
+	dtsMean = apply(dts, 1, mean);
+	dtsSd = apply(dts, 1, sd);
+	r = list(Nsim = Nsim, hfs = hfs, hfsE = dtsMean, hfsSd = dtsSd, hfsB = abs(dtsMean - hfs));
+	r
+}
+simplify2a = simplify2array;
+simulationsFromPed = function(ped, hfs, NsimPped, Nsim, module) {
+	r = lapply(1:Nsim, function(i)simulationFromPed(ped, hfs, NsimPped, module));
+	hfsB = apply(simplify2a(list.kp(r, 'hfsB')), 1, mean);
+	hfsSd = apply(simplify2a(list.kp(r, 'hfsSd')), 1, mean);
+	r = list(Nsim = Nsim, NsimPped = NsimPped, hfs = vector.std(hfs), hfsB = hfsB, hfsSd = hfsSd,
+		mse = hfsB^2 + hfsSd^2
+	);
+	r
+}
+
+#
+#	unit tests
+#
+
+# test wether drawn diplotypes are compatible with genotype input
+test_drawCompatibility = function(ped, hfs, Nsim = 1e2, module) {
+	hfs = vector.std(hfs);
+	o = pedForwardOrder(ped);
+	sim = simulateFromPed(ped, hfs = hfs);
+	R = new(module$DiplotypeReconstructor, sim$gts, pedsItrios2rcpp(sim$peds));
+	dts = sapply(1:Nsim, function(i) {
+		dtsS = R$drawFromHfs(sim$dtfs, runif(length(sim$peds)));
+		gts = diplotypes2gtsDose(dtsS);
+		if (any(sim$gts[o, ] != gts)) {
+			print(o);
+			print(cbind(sim$gts[o, ], gts));
+			stop('drawn diplotypes incompatible with observed genotypes.');
+		}
+	});
+	NULL
+}

@@ -101,34 +101,97 @@ if (0) {
 
 }
 
-simulateFromTemplate = function(pedTemplate, N = 25, hfs = 1:8) {
-	ped = familiesFromTemplate(pedTemplate, N = N);
-	dts = simulateDiplotypesPed(ped, hfs);
-	gts = diplotypes2gts(dts, summarize = sum);
-	dtfs = diplotypeFs(ped, dts);
-	o = pedForwardOrder(ped);
-	pedO = ped[o, ];
-
-	r = list(ped = pedO, dts = dts, gts = gts, dtfs = dtfs, peds = pedSplit2ivTrios(ped));
-	r
+if (0) {
+	Nsims = c(1e2, 1e3, 1e4);
+	Ns = c(25, 50, 100, 400);
+	Nsim = 1e3;
+	hfs = 1:8;
+	mses = lapply(Ns, function(N) {
+		r = simulationFromPed(familiesFromTemplate(pedTemplate, N), hfs, Nsim);
+		mse = mean(r$hfsB^2 + r$hfsSd^2);
+		cat(Sprintf('N: %{N}d MSE:%{mse}.2e\n'));
+		list(Nsim = Nsim, mse = mse, hfsE = r$hfsE, hfsSd = r$hfsSd)
+	});
 }
 
-if (1) {
-	Nsims = c(1e2, 1e3, 1e4);
-	Ns = c(25, 50, 100, 400, 800);
-	Nsim = 1e3;
-	mses = sapply(Ns, function(N) {
-		sim = simulateFromTemplate(pedTemplate, N, hfs = 1:8);
-		R = new(M$DiplotypeReconstructor, sim$gts, pedsItrios2rcpp(sim$peds));
-		dts = sapply(1:Nsim, function(i) {
-			dtsS = R$drawFromHfs(sim$dtfs, runif(length(sim$peds)));
-			diplotypeFs(sim$ped, dtsS)
-		});
-		dtsMean = apply(dts, 1, mean);
-		dtsSd = apply(dts, 1, sd);
-		mse = mean((dtsMean - sim$dtfs)^2);
-		cat(Sprintf('N: %{N}d MSE:%{mse}.2e\n'));
-		list(Nsim = Nsim, mse = mse, dtsMean = dtsMean, dtsSd = dtsSd)
+if (0) {
+	r = simulationsFromPed(familiesFromTemplate(pedTemplate, 25), 1:8, 1e2, 1e1);
+}
+
+# simulations requiring parallelization resources <p>
+if (0) {
+	#source('RgenericAll.R');
+	source('RcomputeResources.R');
+	parallelize_initialize(Parallelize_config__, backend = 'snow', force_rerun = T, parallel_count = 8,
+		libraries = c('Rcpp', 'GeneticsHaplotype'));
+	#parallelize_setEnable(F);
+	modelList = list(
+		NsimPerPed = c(1e3),
+		Npeds = c(25, 50, 100, 400),
+		#Npeds = c(25, 50),
+		Nsim = 5e2,
+		hfs = list(1:8, rep(1, 8), 1/(1:8))
+	);
+	parF = function(modelList, template) {
+		iterateModels(modelList, function(Npeds, Nsim, NsimPerPed, hfs, pedTemplate) {
+			M = Module('Reconstructor', PACKAGE = 'GeneticsHaplotype');
+			r0 = simulationsFromPed(familiesFromTemplate(pedTemplate, Npeds), hfs, NsimPerPed, Nsim,
+				module = M);
+			r1 = c(list(Npeds = Npeds), r0);
+			unlist(r1)
+		}, pedTemplate = template)
+	};
+	r = parallelize_call(parF(modelList, template = pedTemplate));
+	r1 = t(simplify2array(r$results));
+	r1 = r1[order(r1[,'hfs1']),];
+	print(r1, digits = 3);
+	write.csv(r1, file = 'simulations/2014-10-haplotypedrawing.csv');
+}
+
+if (0) {
+	source('GeneticsHaplotype/R/mcmc.R');
+}
+
+# testing
+if (0) {
+	source('GeneticsHaplotype/R/simulation.R');
+	Npeds = 1;
+	hfs = rep(1, 8);
+	ped = familiesFromTemplate(pedTemplate, Npeds);
+	test_drawCompatibility(ped, hfs, Nsim = 1e4, M);
+}
+if (0) {
+	source('GeneticsHaplotype/R/pedigree.R');
+	ped = Df(names = c('iid', 'fid', 'mid', 'pid'), matrix(
+		c(	10, 1, NA, NA,
+			20, 1, NA, NA,
+			30, 1, 10, 20,
+			40, 1, NA, NA,
+			55, 1, 30, 40
+		)
+	, byrow = T, ncol = 4));
+	# genotypes by row, individuals by column 0..5
+	gtsRaw = c(
+		2, 2, 2, 2, 2,
+		0, 0, 0, 0, 0,
+		1, 1, 1, 1, 1);
+	gtsRaw = c(
+		1, 2, 2, 2, 2,
+		0, 1, 1, 0, 1,
+		1, 1, 1, 1, 1);
+
+	gts = t(matrix(gtsRaw, byrow = T, ncol = 5));
+	#sim = simulateFromPed(ped, hfs = 1:8);
+	peds = pedsItrios2rcpp(pedSplit2ivTrios(ped));
+	M = Module('Reconstructor', PACKAGE = 'GeneticsHaplotype');
+	R = new(M$DiplotypeReconstructor, gts, peds);
+	sapply(seq(.01, .99, length.out = 5e0), function(u) {
+		dtsS = R$drawFromHfs(rep(1, 8), u);
+		print(dtsS);
+		gtsR = diplotypes2gtsDose(dtsS);
+		print(all(gts == gtsR));
+		if (any(gts != gtsR)) {
+			print(gtsR);
+		}
 	});
-	
 }
