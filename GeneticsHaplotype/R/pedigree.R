@@ -107,6 +107,24 @@ pedFounders = function(ped) {
 	apply(ped[, c('mid', 'pid')], 1, function(i)all(is.na(i)))
 }
 
+# founder indeces on uniquified version of ped
+pedFounderIdcsForward = function(ped) {
+	o = pedForwardOrder(ped);
+	r = which(pedFounders(ped)[o]);
+	r
+}
+
+pedsFamilySizes = function(peds)
+	sapply(peds, function(ped)as.integer(length(ped$founders) + nrow(ped$itrios)));
+pedFamilySizes = function(ped) pedsFamilySizes(pedSplit2ivTrios(ped));
+pedsFounderSizes = function(peds) sapply(peds, function(ped)length(ped$founders));
+pedFounderSizes = function(ped) pedsFounderSizes(pedSplit2ivTrios(ped));
+pedsFounderIdcs = function(peds) {
+	Ns = as.integer(pop(c(0, cumsum(pedsFamilySizes(peds)))));
+	r = lapply(1:length(peds), function(i)peds[[i]]$founders + Ns[i]);
+	r
+}
+
 plotPedigree = plotPedigree_kinship2 = function(ped, tag = '') {
 	pedu = ped2uniqueId(ped);
 	require('kinship2');

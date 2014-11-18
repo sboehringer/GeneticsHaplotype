@@ -146,11 +146,25 @@ public:
 			//cout << "draw: ";
 			//for (iid_t j = 0; j < draw.size(); j++) cout << (j? ", ": "") << draw[j];
 			//cout << endl;
-			for (iid_t j = 0; j < draw.size(); j ++) m(Ni + j/2, j%2) = draw[j];
+			for (iid_t j = 0; j < draw.size(); j++) m(Ni + j/2, j%2) = draw[j];
 		}
 		return wrap(m);
 	}
 
+	IntegerMatrix	drawFamFromHfs(const iid_t i, const NumericVector &hfsR, const NumericVector &u) const {
+		IntegerMatrix	m(peds[i].N(), 2);
+		iid_t			Ni = 0;
+		hfs_t			hfs(Rcpp::as< hfsv_t >(hfsR));
+		haplotypes_t	draw;
+
+		reconstructions[i].DiplotypeReconstructionSNPunordered::drawFromHfs(hfs, u[i], draw);
+		for (iid_t j = 0; j < draw.size(); j++) m(j/2, j%2) = draw[j];
+		return wrap(m);
+	}
+// 	IntegerVector	countMarkers(void) const {
+// 		return wrap(fetcher.countMarkers());
+// 	}
+	int	countMarkers(void) const { return fetcher.countMarkers(); }
 };
 
 #endif //HAPLOTYPESRWRAPPERS_H

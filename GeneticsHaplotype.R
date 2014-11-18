@@ -148,10 +148,6 @@ if (0) {
 	write.csv(r1, file = 'simulations/2014-10-haplotypedrawing.csv');
 }
 
-if (0) {
-	source('GeneticsHaplotype/R/mcmc.R');
-}
-
 # testing
 if (0) {
 	source('GeneticsHaplotype/R/simulation.R');
@@ -194,4 +190,180 @@ if (0) {
 			print(gtsR);
 		}
 	});
+}
+
+#
+#	<p> imputation
+#
+
+MCMCClass = setRefClass('MCMC',
+	fields = list(
+		# list of numerics specifying prior distributions
+		prior = 'list',
+		# start chain with these parameters
+		start = 'numeric',
+		# compute that many cycles before starting to sample the chain
+		Nburnin = 'integer',
+		# run the chain for this many cycles
+		Nchain = 'integer',
+		# store samples of the chain at these intervals
+		NsampleSpacing = 'integer',
+		# samples from the chain
+		chain = 'list'
+	),
+	methods = list(
+	#
+	#	<p> methods
+	#
+	initialize = function(...) {
+		chain <<- list();
+		.self$initFields(...);
+		.self
+	},
+	update = function() {
+		stop('Abstract method called');
+	},
+	getParameter = function() {
+		stop('Abstract method called');
+	},
+	sample = function() {
+		chain <<- c(chain, list(getParameter()));
+	},
+	run = function() {
+		N = Nburnin + Nchain;
+		for (i in 1:N) {
+			.self$update(i);
+			if (i > Nburnin && ((i - Nburnin - 1) %% NsampleSpacing) == 0) .self$sample();
+		}
+	}
+	#
+	#	</p> methods
+	#
+	)
+);
+MCMCClass$accessors(names(MCMCClass$fields()));
+
+MCMCimputationClass = setRefClass('MCMCimputation', contains = 'MCMC',
+	fields = list(
+		# Diplotype recontstruction to use
+		reconstruction = 'Rcpp_DiplotypeReconstructor',
+		peds = 'list',
+		state = 'matrix',
+		# <p> pre-computed values
+		N = 'integer',
+		Nhts = 'integer',
+		Ncum = 'integer',
+		Ifounders = 'integer',
+		IfoundersPerFamily = 'list'
+	),
+	methods = list(
+	#
+	#	<p> methods
+	#
+	initialize = function(...) {
+		.self$initFields(...);
+		# <p> pre-compute
+		Nhts <<- as.integer(2^reconstruction$countMarkers());
+		# add default prior
+		if (is.null(prior$haplotypes)) prior$haplotypes <<- rep(1, Nhts);
+		# draw first state
+		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
+		state <<- reconstruction$drawFromHfs(htfs, runif(length(peds)));
+
+		# <p> pre-compute
+		N <<- length(peds);
+		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
+		IfoundersPerFamily <<- pedsFounderIdcs(peds);
+		Ifounders <<- unlist(IfoundersPerFamily);
+		.self
+	},
+	#
+	# <p> helpers
+	#
+	freqHat = function(j) {
+		htfs = table.n.freq(state[setdiff(Ifounders, IfoundersPerFamily[[j]]), ], min = 0, n = Nhts - 1);
+		htfs
+	},
+	redrawFamily = function(j) {
+		# posterior distribution of haplotypes
+		htfsPost = freqHat(j) * length(Ifounders) * 2 + prior$haplotypes;
+		#print(round(vector.std(htfsPost)*36, 1));
+		# <A> module indexes from 0
+		dtsJ = R$drawFamFromHfs(j - 1, htfsPost, runif(1));
+		state[Ncum[j]:(Ncum[j + 1] - 1), ] <<- dtsJ;
+		NULL
+	},
+	getParameter = function() {
+		table.n.freq(state[Ifounders, ], min = 0, n = Nhts - 1)
+	},
+	update = function(i) {
+		# iteratively update families
+		famI = ((i - 1) %% N) + 1;
+		redrawFamily(famI);
+	}
+	#
+	#	</p> methods
+	#
+	)
+);
+MCMCimputationClass$accessors(names(MCMCimputationClass$fields()));
+
+#
+#	<p> test MCMC genotype imputation
+#
+
+if (0) {
+	#source('GeneticsHaplotype/R/mcmc.R');
+	source('GeneticsHaplotype/R/pedigree.R');
+}
+
+freqHat = function(dts, j) {
+	htfs = table.n.freq(dts[-j, ], min = 0, n = 7);
+	htfs
+}
+
+redrawFamily = function(dts, j, ped) {
+	dtsJ = R$drawFamFromHfs(j, freqHat(dts, j), runif(1));
+	r = dtsJ[ped$founders, ];
+	r
+}
+
+if (0) {
+	i = pedFounderIdcsForward(d$ped);
+	Ns = c(1, cumsum(pedFounderSizes(ped)) + 1);
+	dts = R$drawFromHfs(1:8, runif(length(d$peds)))[i, ];
+	dtTab = table.n(as.vector(dts), min = 0, n = 7);
+	j = 1;
+	print(freqHat(dts, j));
+	dtsI = R$drawFamFromHfs(j, freqHat(dts, j), runif(1));
+	print(freqHat(dts, 2));
+	dtsJ = redrawFamily(dts, j, d$peds[[j]]);
+	dts[Ns[j]:(Ns[j + 1] -1), ] = dtsJ;
+}
+
+if (1) {
+	hfs = vector.std(1:8);
+	d = simulateFromTemplate(pedTemplate, N = 125, hfs = hfs);
+	R = new(M$DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	mcmc = MCMCimputationClass$new(reconstruction = R, peds = pedSplit2ivTrios(d$ped),
+		Nburnin = 0L, Nchain = 1e5L, NsampleSpacing = length(d$peds),
+		prior = list(haplotypes = 1:8));
+	mcmc$run();
+	chain = sapply(mcmc$chain, identity);
+}
+if (1) {
+	require(ggplot2);
+	require(grid);
+	require(gridExtra);
+
+	ps = lapply(1:nrow(chain), function(i, hfs = NULL) {
+		df = data.frame(par = chain[i, ], it = 1:ncol(chain));
+		p = ggplot() + geom_line(data = df, aes(it, par)) + 
+			scale_y_reverse() + 
+			theme_bw();
+		if (!is.null(hfs)) p = p + geom_hline(aes(yintercept = hfs), alpha = .5);
+		ggplot_gtable(ggplot_build(p))
+	}, hfs = hfs);
+	do.call(grid.arrange, c(ps, list(ncol = 1, nrow = length(ps))));
+
 }
