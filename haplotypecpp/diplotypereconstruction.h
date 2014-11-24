@@ -38,6 +38,7 @@ public:
 	virtual void	print(void) const;
 	inline iid_t	Nfounders(void) const { return pedigree.sizeFounders(); }
 	inline iid_t	Nitrios(void) const { return pedigree.sizeItrios(); }
+	virtual iid_t	Nreconstruction(void) const;
 };
 
 typedef unsigned long long	buffer_t;
@@ -67,6 +68,7 @@ public:
 
 	virtual void	reconstruct(GenotypeFetcher &fetcher);
 	virtual void	print(void) const;
+	virtual iid_t	Nreconstruction(void) const { return reconstruction.size(); }
 
 	void			drawFromLogHfs(const hfs_t &lhfs, const random_t lu, haplotypes_t &draw) const;
 	void			drawFromHfs(const hfs_t &hfs, const random_t u, haplotypes_t &draw) const;
@@ -74,6 +76,13 @@ public:
 	inline int		bitsFactor(void) const { return bitsFactor_; }
 	inline int		bitsHt(void) const { return bitsHt_; }
 	inline buffer_t	*reconstructionAt(int i) const { return reconstruction.buffer(i); }
+
+	// inheritance vector
+	int				ivAt(iid_t i) const;
+	// multiplicative constant
+	int				factorAt(iid_t i) const;
+	// founder diplotype
+	diplotype_t		diplotypeAt(iid_t i, iid_t j) const;
 };
 
 struct ReconstructionArray {

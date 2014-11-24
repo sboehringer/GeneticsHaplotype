@@ -157,8 +157,24 @@ public:
 		hfs_t			hfs(Rcpp::as< hfsv_t >(hfsR));
 		haplotypes_t	draw;
 
-		reconstructions[i].DiplotypeReconstructionSNPunordered::drawFromHfs(hfs, u[i], draw);
+		reconstructions[i].DiplotypeReconstructionSNPunordered::drawFromHfs(hfs, u[0], draw);
 		for (iid_t j = 0; j < draw.size(); j++) m(j/2, j%2) = draw[j];
+		return wrap(m);
+	}
+	// fist column: mulitplicity, second: IV, pairs of founder diplotypes
+	IntegerMatrix	reconstructionsFam(const iid_t i) const {
+		const R_DiplotypeReconstructionSNPunordered	&r = reconstructions[i];
+		IntegerMatrix	m(r.Nreconstruction(), 2 + r.Nfounders() * 2);
+
+		for (iid_t j = 0; j < r.Nreconstruction(); j++) {
+			m(j, 0) = r.factorAt(j);
+			m(j, 1) = r.ivAt(j);
+			for (iid_t k = 0; k < r.Nfounders(); k++) {
+				diplotype_t	dt = r.diplotypeAt(j, k);
+				m(j, 2 + 2*k)     = dt.d1;
+				m(j, 2 + 2*k + 1) = dt.d2;
+			}
+		}
 		return wrap(m);
 	}
 // 	IntegerVector	countMarkers(void) const {

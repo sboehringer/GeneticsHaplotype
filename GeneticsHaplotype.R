@@ -72,7 +72,22 @@ if (0) {
 	plotPedigree(ped);
 }
 
-if (1) {
+if (T) {
+	pedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
+		c(	1, NA, NA,
+			2, NA, NA,
+			3, 1, 2,
+			4, NA, NA,
+			5, 3, 4
+	), byrow = T, ncol = 3));
+	pedTemplate1 = Df(names = c('iid', 'mid', 'pid'), matrix(
+		c(	1, NA, NA,
+			2, NA, NA,
+			3, 1, 2
+	), byrow = T, ncol = 3));
+}
+
+if (0) {
 	N = 25;
 	pedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
 		c(	1, NA, NA,
@@ -275,25 +290,29 @@ MCMCimputationClass = setRefClass('MCMCimputation', contains = 'MCMC',
 		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
 		IfoundersPerFamily <<- pedsFounderIdcs(peds);
 		Ifounders <<- unlist(IfoundersPerFamily);
+		#assign('state0', state[Ifounders, ], envir = .GlobalEnv);
 		.self
 	},
 	#
 	# <p> helpers
 	#
 	freqHat = function(j) {
-		htfs = table.n.freq(state[setdiff(Ifounders, IfoundersPerFamily[[j]]), ], min = 0, n = Nhts - 1);
+		htfs = table.n(state[setdiff(Ifounders, IfoundersPerFamily[[j]]), ], min = 0, n = Nhts - 1);
 		htfs
 	},
 	redrawFamily = function(j) {
 		# posterior distribution of haplotypes
-		htfsPost = freqHat(j) * length(Ifounders) * 2 + prior$haplotypes;
+		htfsPost = freqHat(j) + prior$haplotypes;
 		#print(round(vector.std(htfsPost)*36, 1));
 		# <A> module indexes from 0
 		dtsJ = R$drawFamFromHfs(j - 1, htfsPost, runif(1));
+		#if (any(state[Ncum[j]:(Ncum[j + 1] - 1), ] - dtsJ != 0)) browser();
+
 		state[Ncum[j]:(Ncum[j + 1] - 1), ] <<- dtsJ;
 		NULL
 	},
 	getParameter = function() {
+		#if (any(state[Ifounders, ] - state0 != 0)) print(which(state[Ifounders, ] - state0 != 0));
 		table.n.freq(state[Ifounders, ], min = 0, n = Nhts - 1)
 	},
 	update = function(i) {
@@ -343,11 +362,25 @@ if (0) {
 
 if (1) {
 	hfs = vector.std(1:8);
-	d = simulateFromTemplate(pedTemplate, N = 125, hfs = hfs);
+	N = 250;
+	d = simulateFromTemplate(pedTemplate1, N = N, hfs = hfs);
 	R = new(M$DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
-	mcmc = MCMCimputationClass$new(reconstruction = R, peds = pedSplit2ivTrios(d$ped),
-		Nburnin = 0L, Nchain = 1e5L, NsampleSpacing = length(d$peds),
-		prior = list(haplotypes = 1:8));
+}
+# debug reconstructions
+if (0) {
+	r = sapply(1:length(d$peds), function(i)R$reconstructionsFam(i - 1));
+	reconstGts = cbind(t(r), matrix(as.vector(d$gts), byrow = T, ncol = 3));
+}
+
+if (1) {
+	mcmc = MCMCimputationClass$new(
+		reconstruction = R,
+		peds = pedSplit2ivTrios(d$ped),
+		Nburnin = 0L,
+		Nchain = 1e5L,
+		NsampleSpacing = length(d$peds),
+		prior = list(haplotypes = 1:4)
+	);
 	mcmc$run();
 	chain = sapply(mcmc$chain, identity);
 }

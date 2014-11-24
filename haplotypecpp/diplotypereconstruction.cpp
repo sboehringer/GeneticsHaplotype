@@ -19,6 +19,11 @@ void	DiplotypeReconstruction::print(void) const {
 	throw("abstract method called");
 }
 
+iid_t	DiplotypeReconstruction::Nreconstruction(void) const {
+	throw("abstract method called");
+	return 0;
+}
+
 #if 0
 
 DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
@@ -97,18 +102,26 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 			genotypecomb_t	gtcO = fetcher.genotypeCombination(id);	//offspring
 
 			if (gtcO != gtc00 && gtcO != gtc01 && gtcO != gtc10 && gtcO != gtc11) break;
-			// compute possible inheritance vector: first haplotype from grandmother =^= 0
-			// if needed to make both entries of iv consistent (<N> special case: bothTransm)
-#			if 1
+			// both parents heterozygous && both transmissions possible
+			// for homozygous parents identical situations arise -> not relevant for unordered likelihood
+			bothTransm[j] = (dtm.d1 != dtm.d2) && (dtp.d1 != dtp.d2)
+				&& ((gtcO == gtc00 && gtcO == gtc11) || (gtcO == gtc01 && gtcO == gtc10));
+#			if 0
+			// <!> might produce inconsistent iv-entries
 			iv[2*j] = !(gtcO == gtc00 || gtcO == gtc10);
 			iv[2*j + 1] = !(gtcO == gtc00 || gtcO == gtc01);
-#			else
+#			elif 1
+			// compute possible inheritance vector: first haplotype from grandmother =^= 0
+			// if needed to make both entries of iv consistent (<N> special case: bothTransm)
+			iv[2*j] = !(gtcO == gtc00 || gtcO == gtc10);
+			iv[2*j + 1] = !iv[2*j]? (gtcO == gtc10): (gtcO == gtc11);
+#			else // longer version of the above
 			if ((gtcO == gtc00 || gtcO == gtc10)) {
 				iv[2*j] = 0;
 				iv[2*j + 1] = gtcO == gtc10;
 			} else {
 				iv[2*j] = 1;
-				iv[2*j + 1]	= gtcO == gtc11;
+				iv[2*j + 1] = gtcO == gtc11;
 			}
 #			endif
 			// save offspring diplotype for reference for other I-trios
@@ -116,7 +129,6 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 				selectFromDiplotype(dtm, iv[2*j]),
 				selectFromDiplotype(dtp, iv[2*j + 1]) };
 			// are both directions of transmission possible?
-			bothTransm[j] = (gtcO == gtc00 && gtcO == gtc11) || (gtcO == gtc01 && gtcO == gtc10);
 		}
 		// founder diplotypes not compatible with offspring genotypes
 		if (j < pedigree.sizeItrios()) continue;
@@ -181,8 +193,37 @@ void	DiplotypeReconstructionSNPunordered::print(void) const {
 	}
 }
 
+// inheritance vector
+int	DiplotypeReconstructionSNPunordered::ivAt(iid_t i) const {
+	ReconstructionArray	r(*(DRU *)this, i);
+	int	iv = 0;
+	for (iid_t j = 0; j < Nitrios(); j++) iv |= (r.iv[2*i] << (2*i)) | (r.iv[2*i + 1] << (2*i + 1));
+	return iv;
+}
+
+// multiplicative constant
+int	DiplotypeReconstructionSNPunordered::factorAt(iid_t i) const {
+	ReconstructionArray	r(*(DRU *)this, i);
+	return r.factor[0];
+}
+
+// founder diplotype
+diplotype_t	DiplotypeReconstructionSNPunordered::diplotypeAt(iid_t i, iid_t j) const {
+	ReconstructionArray	r(*(DRU *)this, i);
+	return (diplotype_t) { (haplotype_t)r.hts[2*j], (haplotype_t)r.hts[2*j + 1] };
+}
+
+
+//#define __DEBUG_PROB
+
 void	DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfs_t &lhfs, const random_t lu,
 															haplotypes_t &draw) const {
+#	ifdef __DEBUG_PROB
+	cout << endl;
+	lhfs.print();
+	hfs_t	lhfsE(exp(lhfs));
+	lhfsE.print();
+#	endif
 	/*
 	 * compute log-prob per reconstruction (up to normalizing factor)
 	 */
@@ -194,6 +235,10 @@ void	DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfs_t &lhfs, cons
 		for (int j = 0; j < 2 * Nfounders(); j++) {
 			famlh[i] += lhfs[r.hts[j]];
 		}
+
+#		ifdef __DEBUG_PROB
+		cout << "Reconstruction " << i << ": " << famlh[i] << " [" << exp(famlh[i]) << "]" << endl;
+#		endif
 	}
 
 	/*
@@ -201,8 +246,15 @@ void	DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfs_t &lhfs, cons
 	 */
 	Valarray<haplotypefs_t>	cs(famlh.log_cumsum());
 	haplotypefs_t			csmx = cs[cs.size() - 1];
+	//haplotypefs_t			csmx = cs.back();
 	int						i = cs.binary_search(lu + csmx);
 	assert(i < cs.size());
+#	ifdef __DEBUG_PROB
+	cout << "cs: ";
+	cs.print();
+	cout << "Csmax " << ": " << exp(csmx) << " [" << csmx << "], Search: " << exp(lu + csmx)
+		<< " [" << lu + csmx << "]: " << i << endl;
+#	endif
 	/*
 	 * copy diplotypes
 	 */

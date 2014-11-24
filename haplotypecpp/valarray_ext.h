@@ -9,6 +9,8 @@
 #include <valarray>
 #include <math.h>
 #include <vector>
+#include <iostream>
+#include <iomanip>
 using namespace std;
 
 
@@ -25,11 +27,14 @@ public:
 	Valarray(T val, int size) : valarray<T>(val, size) {}
 	// R code
 	//logSumExpRaw = function(v, pivot = median(v))(log(sum(exp(v - pivot))) + pivot)
+	// <o>
+	// remove max, then r = pivot + log1p((((*this) - pivot).exp()).sum())
 	inline T	logSumExpRaw(const T pivot) const {
 		// <o> optimize: component-wise computation
 		T	r = pivot + log((((*this) - pivot).exp()).sum());
 		return r;
 	}
+	// assume array is ordered in ascending order
 	inline T	logSumExpSorted(void) const {
 		// assert(this->sorted());	// <i>
 		return logSumExpRaw(this->back());	// <!> last element is biggest
@@ -73,8 +78,15 @@ public:
 		}
 		return min;
 	}
+	inline T	back(void) const { return this->back(); }
+	inline void	print(void) const {
+		cout << setprecision(4);
+		for (int i = 0 ; i < this->size(); i++) cout << (i? ", ": "") << (*this)[i];
+		cout << endl;
+	}
 };
 
 template<class T> inline Valarray<T> log(const Valarray<T>& a) { return Valarray<T>(log((valarray<T>)a)); }
+template<class T> inline void print(const Valarray<T>& a) { a.print(); }
 
 #endif // VALARRAY_EXT_H
