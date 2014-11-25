@@ -207,125 +207,6 @@ if (0) {
 	});
 }
 
-#
-#	<p> imputation
-#
-
-MCMCClass = setRefClass('MCMC',
-	fields = list(
-		# list of numerics specifying prior distributions
-		prior = 'list',
-		# start chain with these parameters
-		start = 'numeric',
-		# compute that many cycles before starting to sample the chain
-		Nburnin = 'integer',
-		# run the chain for this many cycles
-		Nchain = 'integer',
-		# store samples of the chain at these intervals
-		NsampleSpacing = 'integer',
-		# samples from the chain
-		chain = 'list'
-	),
-	methods = list(
-	#
-	#	<p> methods
-	#
-	initialize = function(...) {
-		chain <<- list();
-		.self$initFields(...);
-		.self
-	},
-	update = function() {
-		stop('Abstract method called');
-	},
-	getParameter = function() {
-		stop('Abstract method called');
-	},
-	sample = function() {
-		chain <<- c(chain, list(getParameter()));
-	},
-	run = function() {
-		N = Nburnin + Nchain;
-		for (i in 1:N) {
-			.self$update(i);
-			if (i > Nburnin && ((i - Nburnin - 1) %% NsampleSpacing) == 0) .self$sample();
-		}
-	}
-	#
-	#	</p> methods
-	#
-	)
-);
-MCMCClass$accessors(names(MCMCClass$fields()));
-
-MCMCimputationClass = setRefClass('MCMCimputation', contains = 'MCMC',
-	fields = list(
-		# Diplotype recontstruction to use
-		reconstruction = 'Rcpp_DiplotypeReconstructor',
-		peds = 'list',
-		state = 'matrix',
-		# <p> pre-computed values
-		N = 'integer',
-		Nhts = 'integer',
-		Ncum = 'integer',
-		Ifounders = 'integer',
-		IfoundersPerFamily = 'list'
-	),
-	methods = list(
-	#
-	#	<p> methods
-	#
-	initialize = function(...) {
-		.self$initFields(...);
-		# <p> pre-compute
-		Nhts <<- as.integer(2^reconstruction$countMarkers());
-		# add default prior
-		if (is.null(prior$haplotypes)) prior$haplotypes <<- rep(1, Nhts);
-		# draw first state
-		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
-		state <<- reconstruction$drawFromHfs(htfs, runif(length(peds)));
-
-		# <p> pre-compute
-		N <<- length(peds);
-		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
-		IfoundersPerFamily <<- pedsFounderIdcs(peds);
-		Ifounders <<- unlist(IfoundersPerFamily);
-		#assign('state0', state[Ifounders, ], envir = .GlobalEnv);
-		.self
-	},
-	#
-	# <p> helpers
-	#
-	freqHat = function(j) {
-		htfs = table.n(state[setdiff(Ifounders, IfoundersPerFamily[[j]]), ], min = 0, n = Nhts - 1);
-		htfs
-	},
-	redrawFamily = function(j) {
-		# posterior distribution of haplotypes
-		htfsPost = freqHat(j) + prior$haplotypes;
-		#print(round(vector.std(htfsPost)*36, 1));
-		# <A> module indexes from 0
-		dtsJ = R$drawFamFromHfs(j - 1, htfsPost, runif(1));
-		#if (any(state[Ncum[j]:(Ncum[j + 1] - 1), ] - dtsJ != 0)) browser();
-
-		state[Ncum[j]:(Ncum[j + 1] - 1), ] <<- dtsJ;
-		NULL
-	},
-	getParameter = function() {
-		#if (any(state[Ifounders, ] - state0 != 0)) print(which(state[Ifounders, ] - state0 != 0));
-		table.n.freq(state[Ifounders, ], min = 0, n = Nhts - 1)
-	},
-	update = function(i) {
-		# iteratively update families
-		famI = ((i - 1) %% N) + 1;
-		redrawFamily(famI);
-	}
-	#
-	#	</p> methods
-	#
-	)
-);
-MCMCimputationClass$accessors(names(MCMCimputationClass$fields()));
 
 #
 #	<p> test MCMC genotype imputation
@@ -360,10 +241,10 @@ if (0) {
 	dts[Ns[j]:(Ns[j + 1] -1), ] = dtsJ;
 }
 
-if (1) {
+if (0) {
 	hfs = vector.std(1:8);
-	N = 250;
-	d = simulateFromTemplate(pedTemplate1, N = N, hfs = hfs);
+	N = 5e2;
+	d = simulateFromTemplate(pedTemplate, N = N, hfs = hfs);
 	R = new(M$DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 }
 # debug reconstructions
@@ -372,7 +253,7 @@ if (0) {
 	reconstGts = cbind(t(r), matrix(as.vector(d$gts), byrow = T, ncol = 3));
 }
 
-if (1) {
+if (0) {
 	mcmc = MCMCimputationClass$new(
 		reconstruction = R,
 		peds = pedSplit2ivTrios(d$ped),
@@ -384,7 +265,7 @@ if (1) {
 	mcmc$run();
 	chain = sapply(mcmc$chain, identity);
 }
-if (1) {
+if (0) {
 	require(ggplot2);
 	require(grid);
 	require(gridExtra);
@@ -399,4 +280,14 @@ if (1) {
 	}, hfs = hfs);
 	do.call(grid.arrange, c(ps, list(ncol = 1, nrow = length(ps))));
 
+}
+
+if (1) {
+	#source('GeneticsHaplotype/R/mcmc.R');
+	source('GeneticsHaplotype/R/simulation.R');
+	gts = c(0:2, 2:0);
+	pa = simulatePhenotypesBinRaw(gts, c(-3, 4), scoreGt = scoresL$additive);
+	print(pa);
+	pg = simulatePhenotypesBinRaw(gts, c(-3, 4, 2), scoreGt = scoresL$genotype);
+	print(pg);
 }

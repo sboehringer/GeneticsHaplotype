@@ -113,6 +113,36 @@ simulationsFromPed = function(ped, hfs, NsimPped, Nsim, module) {
 }
 
 #
+#	<p> phenotype helpers
+#
+
+logitI = expit = function(x, min = 0, max = 1) { (max - min)/(1 + exp(-x)) + min }
+logit = function(x, min = 0, max = 1) { log((x - min)/(max - x)) }
+
+scoresL = scoresS = scoresStd = list(
+	dom = c(0, 1, 1), add =  c(0, .5, 1), rec = c(0, 0, 1), gen = factor(0:2)
+);
+names(scoresL) = c("dominant", "additive", "recessive", 'genotype');
+names(scoresS) = c("D", "A", "R", 'G');
+
+# @param gts: vector of genotypes
+# @param beta: vector of effects (including baseline)
+# @param score: vector of risk scores per individual
+# @param scoresGt: scoring vector for gts
+
+simulatePhenotypesBinRaw = function(gts, beta, score = 0, scoreGt = scoresL$additive, link = expit) {
+	d = data.frame(scores = scoreGt[gts + 1]);
+	mm = model.matrix(model.frame(~ scores, d), d);
+	risk = expit(mm %*% beta + score);
+	y = as.integer(risk < runif(length(risk)));
+	list(mm = mm, risk = risk, y = y)
+}
+
+simulatePhenotypesBin = function(gts, beta, score = 0, scoreGt = scoresL$additive, link = expit) {
+	simulatePhenotypesBinRaw(gts, beta, score, scoreGt, link)$y
+}
+
+#
 #	unit tests
 #
 
