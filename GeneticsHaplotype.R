@@ -282,7 +282,7 @@ if (0) {
 
 }
 
-if (1) {
+if (0) {
 	#source('GeneticsHaplotype/R/mcmc.R');
 	source('GeneticsHaplotype/R/simulation.R');
 	gts = c(0:2, 2:0);
@@ -290,4 +290,12 @@ if (1) {
 	print(pa);
 	pg = simulatePhenotypesBinRaw(gts, c(-3, 4, 2), scoreGt = scoresL$genotype);
 	print(pg);
+}
+
+if (1) {
+	source('GeneticsHaplotype/R/mcmc.R');
+	b = MCMCBlockClass$new();
+	MCMCBlockClass$methods();
+	b$hello();	# <!> mb called before b[['hello']]() works
+	b[['hello']]();
 }

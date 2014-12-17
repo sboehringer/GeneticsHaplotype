@@ -54,6 +54,58 @@ MCMCClass = setRefClass('MCMC',
 MCMCClass$accessors(names(MCMCClass$fields()));
 
 #
+#	<p> block updating class
+#
+#	Inherits from MCMC and adds the ability to block updating across the parameter components.
+#	A list of integers is provided that determines the order and count of updating steps.
+#	Each parameter component is garuanteed to be called with a sequential number (w/o gaps)
+#	for updating steps. The following pseudo-code applies:
+#		N = sum(unlist(blocking))
+#		Ncum = cumsum(unlist(blocking))
+#		for (i in 1:Ncycles) {
+#			Iblock = (i - 1) %/% N + 1;
+#			# update within block
+#			j = i %% N;
+#			# component
+#			Ic = which(j <= Ncum)[1];
+#			# index within component
+#			Iwi = blocking[[Ic]] * (j - 1) + (j - Ncum[Ic]) + 1;
+#			.self[[updateComponentName]](Iwi);
+#		}
+
+
+MCMCBlockClass = setRefClass('MCMCBlock', contains = 'MCMC',
+	fields = list(
+		blocking = 'list'
+	),
+	methods = list(
+	#
+	#	<p> methods
+	#
+	initialize = function(...) {
+		callSuper();
+		.self$initFields(...);
+		.self
+	},
+	run = function() {
+		N = Nburnin + Nchain;
+		for (i in 1:N) {
+			.self$update(i);
+			if (i > Nburnin && ((i - Nburnin - 1) %% NsampleSpacing) == 0) .self$sample();
+		}
+	},
+	hello = function() {
+		print("hello world");
+	}
+	#
+	#	</p> methods
+	#
+	)
+);
+MCMCBlockClass$accessors(names(MCMCBlockClass$fields()));
+
+
+#
 #	<p> imputation
 #
 
