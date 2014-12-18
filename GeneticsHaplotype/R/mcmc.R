@@ -76,22 +76,33 @@ MCMCClass$accessors(names(MCMCClass$fields()));
 
 MCMCBlockClass = setRefClass('MCMCBlock', contains = 'MCMC',
 	fields = list(
-		blocking = 'list'
+		.blocking = 'list'
 	),
 	methods = list(
 	#
 	#	<p> methods
 	#
-	initialize = function(...) {
-		callSuper();
-		.self$initFields(...);
+	initialize = function(..., blocking = list()) {
+		callSuper(...);
+		.blocking <<- blocking
 		.self
 	},
 	run = function() {
-		N = Nburnin + Nchain;
-		for (i in 1:N) {
-			.self$update(i);
-			if (i > Nburnin && ((i - Nburnin - 1) %% NsampleSpacing) == 0) .self$sample();
+		# number of MCMC cycles
+		Ncycles = Nburnin + Nchain;
+		# cycles to spend in parameter components "blocks"
+		N = sum(unlist(blocking));
+		Ncum = cumsum(unlist(blocking));
+
+		for (i in 1:Ncycles) {
+			Iblock = (i - 1) %/% N + 1;
+			# update within block
+			j = i %% N;
+			# component
+			Ic = which(j <= Ncum)[1];
+			# index within component
+			Iwi = blocking[[Ic]] * (j - 1) + (j - Ncum[Ic]) + 1;
+			.self[[updateComponentName]](Iwi);
 		}
 	},
 	hello = function() {
@@ -177,3 +188,55 @@ MCMCimputationClass = setRefClass('MCMCimputation', contains = 'MCMC',
 	)
 );
 MCMCimputationClass$accessors(names(MCMCimputationClass$fields()));
+
+#
+#	<p> MCMC linear
+#
+
+pop = function(v)(v[-length(v)])
+vectorLag = function(v, start = 0)pop(c(v, start) - c(start, v))
+splitN = function(N, by = 4) vectorLag(round(cumsum(rep(N/by, by))));
+
+# @par: lolRaw: list of list containing lists to be meshed
+# @par: lolMesh: containing the mesh: matrix of elements to be picked row-wise
+#	column indicates list index from lolRaw value is the list position, NA's cause component to be skipped
+meshLists = function(lolRaw, lolMesh) {
+	idcs = merge.multi.list(list(list(1:nrow(lolMesh)), list(1:ncol(lolMesh))));
+	r = lapply(1:nrow(idcs), function(i) {
+		Iel = lolMesh[idcs[i, 1], idcs[i, 2]];
+		print(lolRaw[[idcs[i, 2]]][[Iel]]);
+		if (is.na(Iel)) NULL else lolRaw[[idcs[i, 2]]][Iel]
+	});
+	List_(unlist.n(r, 1), rm.null = T);
+}
+
+MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
+	fields = list(
+		# Diplotype recontstruction to use
+		#reconstruction = 'Rcpp_DiplotypeReconstructor',
+		peds = 'list',
+		state = 'matrix'
+	),
+	methods = list(
+	#
+	#	<p> methods
+	#
+	initialize = function(peds = NULL, ..., NpedSplit = 4) {
+		Npeds = length(peds);
+		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
+		blockLinB = list(beta = 1);
+		blockLinS = list(sigma = 1);
+		lol = list(blockHts, blockLinB, blockLinS);
+		mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
+		blocking = meshLists(lol, mesh);
+		callSuper(peds, ..., blocking = blocking);
+		.self
+	},
+	updateBeta = function(i) {
+	}
+	#
+	#	</p> methods
+	#
+	)
+);
+MCMCLinearClass$accessors(names(MCMCLinearClass$fields()));

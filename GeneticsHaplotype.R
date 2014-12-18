@@ -292,10 +292,21 @@ if (0) {
 	print(pg);
 }
 
-if (1) {
+if (0) {
 	source('GeneticsHaplotype/R/mcmc.R');
 	b = MCMCBlockClass$new();
 	MCMCBlockClass$methods();
 	b$hello();	# <!> mb called before b[['hello']]() works
 	b[['hello']]();
+}
+
+if (1) {
+	Nhts = 4;
+	hts = listKeyValue(rep('hts', Nhts), splitN(15, Nhts));
+	linB = list(beta = 1);
+	linS = list(sigma = 1);
+	lol = list(hts, linB, linS);
+	mesh = matrix(c(1:length(hts), rep(1, Nhts), rep(1, Nhts)), ncol = 3);
+	r = meshLists(lol, mesh);
+	print(r);
 }
