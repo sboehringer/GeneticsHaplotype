@@ -54,6 +54,16 @@ MCMCClass = setRefClass('MCMC',
 MCMCClass$accessors(names(MCMCClass$fields()));
 
 #
+#	<p> helper function
+#
+
+# hack to vivify method lookup via list-syntax
+activateMethods = function(class, methods) {
+	sapply(methods, function(m)eval(parse(text = sprintf('class$%s', m))))
+	NULL
+}
+
+#
 #	<p> block updating class
 #
 #	Inherits from MCMC and adds the ability to block updating across the parameter components.
@@ -76,7 +86,9 @@ MCMCClass$accessors(names(MCMCClass$fields()));
 
 MCMCBlockClass = setRefClass('MCMCBlock', contains = 'MCMC',
 	fields = list(
-		.blocking = 'list'
+		.blocking = 'list',
+		# <p> pre-computed vars
+		updateMethods = 'character'
 	),
 	methods = list(
 	#
@@ -84,29 +96,53 @@ MCMCBlockClass = setRefClass('MCMCBlock', contains = 'MCMC',
 	#
 	initialize = function(..., blocking = list()) {
 		callSuper(...);
-		.blocking <<- blocking
+		.blocking <<- blocking;
+		updateMethods <<- as.character(sapply(names(.blocking), function(e)sprintf('update_%s', e)));
+		activateMethods(.self, updateMethods);	# <A> hack
+
 		.self
 	},
 	run = function() {
 		# number of MCMC cycles
 		Ncycles = Nburnin + Nchain;
 		# cycles to spend in parameter components "blocks"
-		N = sum(unlist(blocking));
-		Ncum = cumsum(unlist(blocking));
+		N = sum(unlist(.blocking));
+		Ncum = cumsum(unlist(.blocking));
+		# padded version to subtract #updates taken so far
+		NcumPad = c(0, Ncum);
+		ns = names(.blocking);
+		nsU = unique(names(.blocking));
+		NperComp = nlapply(nsU, function(n)sum(as.integer(.blocking[which(ns == n)])));
+		NcumPerComp = nlapply(nsU, function(n)c(0, cumsum(as.integer(.blocking[which(ns == n)]))));
+		# cumulative component index: the how-manieth update is performed for the current block
+		IcumComp = lapply(1:length(ns), function(i)sum(ns[1:i] == ns[i]));
 
 		for (i in 1:Ncycles) {
-			Iblock = (i - 1) %/% N + 1;
-			# update within block
-			j = i %% N;
-			# component
-			Ic = which(j <= Ncum)[1];
+			# how many full rounds of updating (indexed from 0)?
+			Ifull = (i - 1) %/% N;
+			# update within block (one iteration of all updates in .blocking), indexed from 0
+			j = (i - 1) %% N;
+			# component to update (indexed from 1)
+			Ic = which(j + 1 <= Ncum)[1];
+			#
 			# index within component
-			Iwi = blocking[[Ic]] * (j - 1) + (j - Ncum[Ic]) + 1;
-			.self[[updateComponentName]](Iwi);
+			#
+			# name of current component
+			n = ns[Ic];
+			# start with offset from previous rounds
+			Iwi = last(NperComp[[n]]) * Ifull +
+				# add #updates taking from begin of current component
+				j - NcumPad[Ic] +
+				# add cumulative #updates taken for the current component in the current round
+				NcumPerComp[[n]][IcumComp[[Ic]]] + 1;
+			.self[[updateMethods[Ic]]](Iwi);
 		}
 	},
-	hello = function() {
-		print("hello world");
+	update_beta = function(i) {
+		print(sprintf('beta: #%d', i));
+	},
+	update_hts = function(i) {
+		print(sprintf('hts: #%d', i));
 	}
 	#
 	#	</p> methods
@@ -194,6 +230,7 @@ MCMCimputationClass$accessors(names(MCMCimputationClass$fields()));
 #
 
 pop = function(v)(v[-length(v)])
+# differences between successive elements, first diff is first element with start
 vectorLag = function(v, start = 0)pop(c(v, start) - c(start, v))
 splitN = function(N, by = 4) vectorLag(round(cumsum(rep(N/by, by))));
 

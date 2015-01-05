@@ -72,7 +72,7 @@ if (0) {
 	plotPedigree(ped);
 }
 
-if (T) {
+if ( F) {
 	pedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
 		c(	1, NA, NA,
 			2, NA, NA,
@@ -293,20 +293,41 @@ if (0) {
 }
 
 if (0) {
+	source('GeneticsHaplotype/R/Rdata.R');
 	source('GeneticsHaplotype/R/mcmc.R');
 	b = MCMCBlockClass$new();
 	MCMCBlockClass$methods();
-	b$hello();	# <!> mb called before b[['hello']]() works
+	#b$hello();	# <!> mb called before b[['hello']]() works
+	activateMethods(b, 'hello');
 	b[['hello']]();
+	
 }
 
-if (1) {
+if (0) {
+	source('GeneticsHaplotype/R/Rdata.R');
+	source('GeneticsHaplotype/R/mcmc.R');
 	Nhts = 4;
 	hts = listKeyValue(rep('hts', Nhts), splitN(15, Nhts));
 	linB = list(beta = 1);
 	linS = list(sigma = 1);
 	lol = list(hts, linB, linS);
-	mesh = matrix(c(1:length(hts), rep(1, Nhts), rep(1, Nhts)), ncol = 3);
+	mesh = matrix(c(1:length(hts), rep(1, Nhts), rep(1, Nhts)), ncol = length(lol));
 	r = meshLists(lol, mesh);
 	print(r);
 }
+
+if (1) {
+	source('GeneticsHaplotype/R/Rdata.R');
+	source('GeneticsHaplotype/R/mcmc.R');
+
+	Nhts = 4;
+	hts = listKeyValue(rep('hts', Nhts), splitN(15, Nhts));
+	linB = list(beta = 1);
+	lol = list(hts, linB);
+	mesh = matrix(c(1:length(hts), rep(1, Nhts)), ncol = length(lol));
+	r = meshLists(lol, mesh);
+
+	b = MCMCBlockClass$new(blocking = r, Nburnin = 1e1L, Nchain = 4e1L);
+	b$run();
+}
+
