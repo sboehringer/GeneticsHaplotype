@@ -247,12 +247,17 @@ meshLists = function(lolRaw, lolMesh) {
 	List_(unlist.n(r, 1), rm.null = T);
 }
 
+require('MASS');
+
 MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 	fields = list(
 		# Diplotype recontstruction to use
 		#reconstruction = 'Rcpp_DiplotypeReconstructor',
 		peds = 'list',
-		state = 'matrix'
+		state = 'list',
+		X = 'matrix',	# design matrix
+		y = 'numeric',	# response vector
+		Nloci = 'integer'
 	),
 	methods = list(
 	#
@@ -269,7 +274,30 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 		callSuper(peds, ..., blocking = blocking);
 		.self
 	},
-	updateBeta = function(i) {
+	# by convention we regress on the locus 0, corresponding to index 1 in R
+	# loci have to be rearranged in advance to follow this convention if marker order differs
+	genotypes = function() {
+		apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
+	},
+	update_beta = function(i) {
+		# derive genotypes
+		gts = genotypes();
+		# build design matrix
+		X1 = cbind(gts, X);
+		S1inv = diag(1/prior$tau) + t(X1) %*% X1 / chain$sigma2;
+		S1 = solve(S1inv);
+		mu = S1inv %*% (t(X1) %*% y) / chain$sigma2;
+		state$beta <<- mvrnorm(1, mu, S1);
+	},
+	update_sigma = function(i) {
+		# derive genotypes
+		gts = genotypes();
+		# build design matrix
+		X1 = cbind(gts, X);
+		S1inv = diag(1/prior$tau) + t(X1) %*% X1 / chain$sigma2;
+		S1 = solve(S1inv);
+		mu = S1inv %*% (t(X1) %*% y) / chain$sigma2;
+		state$beta <<- mvrnorm(1, mu, S1);
 	}
 	#
 	#	</p> methods
