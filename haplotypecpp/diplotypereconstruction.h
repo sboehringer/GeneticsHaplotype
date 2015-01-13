@@ -70,6 +70,7 @@ public:
 	virtual void	print(void) const;
 	virtual iid_t	Nreconstruction(void) const { return reconstruction.size(); }
 
+	void			codeHaplotypesIntoVector(int i, haplotypes_t &draw) const;
 	void			drawFromLogHfs(const hfs_t &lhfs, const random_t lu, haplotypes_t &draw) const;
 	void			drawFromHfs(const hfs_t &hfs, const random_t u, haplotypes_t &draw) const;
 

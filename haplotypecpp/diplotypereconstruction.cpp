@@ -216,6 +216,23 @@ diplotype_t	DiplotypeReconstructionSNPunordered::diplotypeAt(iid_t i, iid_t j) c
 
 //#define __DEBUG_PROB
 
+/*
+ * copy diplotypes
+ */
+void	DiplotypeReconstructionSNPunordered::codeHaplotypesIntoVector(int i, haplotypes_t &draw) const {
+	draw.resize(2*Nfounders() + 2*Nitrios());
+	ReconstructionArray	r(*(DRU *)this, i);
+
+	for (int j = 0; j < Nfounders(); j++) {
+		draw[2*pedigree.founderAt(j)]     = r.hts[2*j];
+		draw[2*pedigree.founderAt(j) + 1] = r.hts[2*j + 1];
+	}
+	for (int j = 0; j < Nitrios(); j++) {
+		draw[2*pedigree.trioIid(j)]     = draw[2*pedigree.trioMid(j) + r.iv[2*j]];
+		draw[2*pedigree.trioIid(j) + 1] = draw[2*pedigree.trioPid(j) + r.iv[2*j + 1]];
+	}
+}
+
 void	DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfs_t &lhfs, const random_t lu,
 															haplotypes_t &draw) const {
 #	ifdef __DEBUG_PROB
@@ -255,21 +272,7 @@ void	DiplotypeReconstructionSNPunordered::drawFromLogHfs(const hfs_t &lhfs, cons
 	cout << "Csmax " << ": " << exp(csmx) << " [" << csmx << "], Search: " << exp(lu + csmx)
 		<< " [" << lu + csmx << "]: " << i << endl;
 #	endif
-	/*
-	 * copy diplotypes
-	 */
-	draw.resize(2*Nfounders() + 2*Nitrios());
-	ReconstructionArray	r(*(DRU *)this, i);
-
-	for (int j = 0; j < Nfounders(); j++) {
-		draw[2*pedigree.founderAt(j)]     = r.hts[2*j];
-		draw[2*pedigree.founderAt(j) + 1] = r.hts[2*j + 1];
-	}
-	for (int j = 0; j < Nitrios(); j++) {
-		draw[2*pedigree.trioIid(j)]     = draw[2*pedigree.trioMid(j) + r.iv[2*j]];
-		draw[2*pedigree.trioIid(j) + 1] = draw[2*pedigree.trioPid(j) + r.iv[2*j + 1]];
-	}
-
+	codeHaplotypesIntoVector(i, draw);
 }
 
 void	DiplotypeReconstructionSNPunordered::drawFromHfs(const hfs_t &hfs, const random_t u,

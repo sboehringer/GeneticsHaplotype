@@ -155,11 +155,15 @@ MCMCBlockClass$accessors(names(MCMCBlockClass$fields()));
 #
 #	<p> imputation
 #
+# forward declaration
+setRefClass('DiplotypeReconstructor');
 
 MCMCimputationClass = setRefClass('MCMCimputation', contains = 'MCMC',
 	fields = list(
 		# Diplotype recontstruction to use
-		reconstruction = 'Rcpp_DiplotypeReconstructor',
+		#reconstruction = 'Rcpp_DiplotypeReconstructor',
+		#reconstruction = 'Rcpp_DiplotypeReconstructor',
+		reconstruction = 'DiplotypeReconstructor',
 		peds = 'list',
 		state = 'matrix',
 		# <p> pre-computed values
@@ -256,6 +260,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 		peds = 'list',
 		state = 'list',
 		X = 'matrix',	# design matrix
+		Xg = 'matrix',	# design matrix including genotypes
 		y = 'numeric',	# response vector
 		Nloci = 'integer'
 	),
@@ -283,21 +288,19 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 		# derive genotypes
 		gts = genotypes();
 		# build design matrix
-		X1 = cbind(gts, X);
-		S1inv = diag(1/prior$tau) + t(X1) %*% X1 / chain$sigma2;
+		Xg <<- cbind(gts, X);
+		S1inv = diag(1/prior$tau) + t(Xg) %*% Xg / chain$sigma2;
 		S1 = solve(S1inv);
-		mu = S1inv %*% (t(X1) %*% y) / chain$sigma2;
+		mu = S1inv %*% (t(Xg) %*% y) / chain$sigma2;
 		state$beta <<- mvrnorm(1, mu, S1);
 	},
 	update_sigma = function(i) {
-		# derive genotypes
-		gts = genotypes();
-		# build design matrix
-		X1 = cbind(gts, X);
-		S1inv = diag(1/prior$tau) + t(X1) %*% X1 / chain$sigma2;
-		S1 = solve(S1inv);
-		mu = S1inv %*% (t(X1) %*% y) / chain$sigma2;
-		state$beta <<- mvrnorm(1, mu, S1);
+		res = y - Xg %*% state$beta;
+		gscale = prior$gscale + nrow(Xg)/2;
+		gshape = 1/(1/prior$gshape + res %*% res);
+		state$sigma <<- 1/rgamma(1, shape = gshape, scale = gscale);
+	},
+	update_eta = function(i) {
 	}
 	#
 	#	</p> methods

@@ -12,7 +12,9 @@ if (F) {
 }
 if (T) {
 	require('GeneticsHaplotype');
-	M = Module('Reconstructor', PACKAGE = 'GeneticsHaplotype');
+	source('GeneticsHaplotype/R/Rdata.R');
+	source('GeneticsHaplotype/R/simulation.R');
+	#M = Module('Reconstructor', PACKAGE = 'GeneticsHaplotype');
 }
 
 if (0) {
@@ -22,7 +24,8 @@ if (0) {
 	);
 	peds = list(ped1);
 	gts = t(matrix(c(c( 1, 1, 1, 1, 1, 1), c(1, 1, 1, 1, 1, 1), c(1, 1, 1, 1, 1, 1)), ncol = 6, byrow = T));
-	R = new(M$DiplotypeReconstructor, gts, peds);
+	#R = new(M$DiplotypeReconstructor, gts, peds);
+	R = new(DiplotypeReconstructor, gts, peds);
 }
 
 if (0) {
@@ -72,7 +75,7 @@ if (0) {
 	plotPedigree(ped);
 }
 
-if ( F) {
+if ( T) {
 	pedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
 		c(	1, NA, NA,
 			2, NA, NA,
@@ -241,11 +244,12 @@ if (0) {
 	dts[Ns[j]:(Ns[j + 1] -1), ] = dtsJ;
 }
 
-if (0) {
+if (1) {
 	hfs = vector.std(1:8);
 	N = 5e2;
 	d = simulateFromTemplate(pedTemplate, N = N, hfs = hfs);
-	R = new(M$DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	#R = new(M$DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	#R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 }
 # debug reconstructions
 if (0) {
@@ -316,7 +320,7 @@ if (0) {
 	print(r);
 }
 
-if (1) {
+if (0) {
 	source('GeneticsHaplotype/R/Rdata.R');
 	source('GeneticsHaplotype/R/mcmc.R');
 
@@ -331,3 +335,8 @@ if (1) {
 	b$run();
 }
 
+if (1) {
+	require('GeneticsHaplotype');
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+}

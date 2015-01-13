@@ -177,6 +177,32 @@ public:
 		}
 		return wrap(m);
 	}
+	// fist column: mulitplicity, pairs of founder diplotypes
+	//	instead of IV, return diplotypes
+	IntegerMatrix	reconstructionsFamFull(const iid_t i) const {
+		const R_DiplotypeReconstructionSNPunordered	&r = reconstructions[i];
+		IntegerMatrix	m(r.Nreconstruction(), 1 + (r.Nfounders() + r.Nitrios()) * 2);
+		haplotypes_t	hts;
+
+		
+		for (iid_t j = 0; j < r.Nreconstruction(); j++) {
+			r.codeHaplotypesIntoVector(j, hts);
+			m(j, 0) = r.factorAt(j);
+			for (iid_t k = 0; k < hts.size(); k++) {
+				m(j, 1 + k) = hts[k];
+			}
+		}
+		return wrap(m);
+	}
+	// fist column: mulitplicity, pairs of founder diplotypes, pairs of non-founder haplotypes
+	List	reconstructionsAll(void) const {
+		List			lor(reconstructions.size());	// list of reconstructions
+
+		for (iid_t i = 0; i < reconstructions.size(); i++) {
+			lor[i] = reconstructionsFamFull(i);
+		}
+		return wrap(lor);
+	}
 // 	IntegerVector	countMarkers(void) const {
 // 		return wrap(fetcher.countMarkers());
 // 	}
