@@ -256,11 +256,12 @@ require('MASS');
 MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 	fields = list(
 		# Diplotype recontstruction to use
-		#reconstruction = 'Rcpp_DiplotypeReconstructor',
+		reconstruction = 'list',
+		# risk genotypes for each reconstruction
+		reconstructionGts = 'list',
 		peds = 'list',
 		state = 'list',
 		X = 'matrix',	# design matrix
-		Xg = 'matrix',	# design matrix including genotypes
 		y = 'numeric',	# response vector
 		Nloci = 'integer'
 	),
@@ -268,6 +269,15 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 	#
 	#	<p> methods
 	#
+	genotypesPrecompute = function() {
+		reconstructionGts <<- lapply(reconstruction, function(m) {
+			# alleles
+			as = apply(m[, -1, drop = F], c(1, 2), function(e)e%%2);
+			t(apply(as, 1, function(r)apply(matrix(r, byrow = T, ncol = 2), 1, sum)))
+		});
+		apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
+		NULL
+	},
 	initialize = function(peds = NULL, ..., NpedSplit = 4) {
 		Npeds = length(peds);
 		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
@@ -300,7 +310,12 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 		gshape = 1/(1/prior$gshape + res %*% res);
 		state$sigma <<- 1/rgamma(1, shape = gshape, scale = gscale);
 	},
-	update_eta = function(i) {
+	update_hts = function(i) {
+		N <<- length(peds);
+		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
+		Preconstruction = sapply(1:nrow(recontructions[[i + 1]]), function(k) {
+			cbind(reconstructionGts[k, ], X[(Ncum[i - 1] + 1):Ncum[i], , drop = F]) %*% state$beta
+		});
 	}
 	#
 	#	</p> methods

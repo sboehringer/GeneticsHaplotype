@@ -244,8 +244,8 @@ if (0) {
 	dts[Ns[j]:(Ns[j + 1] -1), ] = dtsJ;
 }
 
-if (1) {
-	hfs = vector.std(1:8);
+if (F) {
+	hfs = rev(vector.std(1:8));
 	N = 5e2;
 	d = simulateFromTemplate(pedTemplate, N = N, hfs = hfs);
 	#R = new(M$DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
@@ -339,4 +339,9 @@ if (1) {
 	require('GeneticsHaplotype');
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	reconstructions = R$reconstructionsAll();
+	gts = lapply(reconstructions, function(m) {
+		# alleles
+		as = apply(m[, -1, drop = F], c(1, 2), function(e)e%%2);
+		t(apply(as, 1, function(r)apply(matrix(r, byrow = T, ncol = 2), 1, sum)))
+	});
 }
