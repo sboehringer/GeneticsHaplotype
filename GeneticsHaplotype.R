@@ -4,18 +4,40 @@
 
 library('devtools');
 library('Rcpp');
+source('GeneticsHaplotype/R/mcmc.R');
+source('GeneticsHaplotype/R/pedigree.R');
+source('GeneticsHaplotype/R/simulation.R');
+source('GeneticsHaplotype/R/Rdata.R');
 
-if (F) {
+if (T) {
 	system('rm GeneticsHaplotype/src/*.o GeneticsHaplotype/src/*.so');
 	Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
 	install('GeneticsHaplotype', threads = 6);
 }
 if (T) {
-	require('GeneticsHaplotype');
-	source('GeneticsHaplotype/R/Rdata.R');
-	source('GeneticsHaplotype/R/simulation.R');
+	library('GeneticsHaplotype');
 	#M = Module('Reconstructor', PACKAGE = 'GeneticsHaplotype');
 }
+if ( T) {
+	pedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
+		c(	1, NA, NA,
+			2, NA, NA,
+			3, 1, 2,
+			4, NA, NA,
+			5, 3, 4
+	), byrow = T, ncol = 3));
+	pedTemplate1 = Df(names = c('iid', 'mid', 'pid'), matrix(
+		c(	1, NA, NA,
+			2, NA, NA,
+			3, 1, 2
+	), byrow = T, ncol = 3));
+}
+if (T) {
+	hfs = rev(vector.std(1:8));
+	N = 5e2;
+	d = simulateFromTemplate(pedTemplate, N = N, hfs = hfs);
+}
+
 
 if (0) {
 	ped1 = list(
@@ -73,21 +95,6 @@ if (0) {
 
 if (0) {
 	plotPedigree(ped);
-}
-
-if ( T) {
-	pedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
-		c(	1, NA, NA,
-			2, NA, NA,
-			3, 1, 2,
-			4, NA, NA,
-			5, 3, 4
-	), byrow = T, ncol = 3));
-	pedTemplate1 = Df(names = c('iid', 'mid', 'pid'), matrix(
-		c(	1, NA, NA,
-			2, NA, NA,
-			3, 1, 2
-	), byrow = T, ncol = 3));
 }
 
 if (0) {
@@ -168,7 +175,6 @@ if (0) {
 
 # testing
 if (0) {
-	source('GeneticsHaplotype/R/simulation.R');
 	Npeds = 1;
 	hfs = rep(1, 8);
 	ped = familiesFromTemplate(pedTemplate, Npeds);
@@ -222,7 +228,7 @@ if (0) {
 
 freqHat = function(dts, j) {
 	htfs = table.n.freq(dts[-j, ], min = 0, n = 7);
-	htfs
+	htfsF
 }
 
 redrawFamily = function(dts, j, ped) {
@@ -244,13 +250,6 @@ if (0) {
 	dts[Ns[j]:(Ns[j + 1] -1), ] = dtsJ;
 }
 
-if (F) {
-	hfs = rev(vector.std(1:8));
-	N = 5e2;
-	d = simulateFromTemplate(pedTemplate, N = N, hfs = hfs);
-	#R = new(M$DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
-	#R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
-}
 # debug reconstructions
 if (0) {
 	r = sapply(1:length(d$peds), function(i)R$reconstructionsFam(i - 1));
@@ -258,6 +257,7 @@ if (0) {
 }
 
 if (0) {
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	mcmc = MCMCimputationClass$new(
 		reconstruction = R,
 		peds = pedSplit2ivTrios(d$ped),

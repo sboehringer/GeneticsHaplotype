@@ -155,17 +155,9 @@ MCMCBlockClass$accessors(names(MCMCBlockClass$fields()));
 #
 #	<p> imputation
 #
-# forward declaration
-setRefClass('DiplotypeReconstructor');
 
-MCMCimputationClass = setRefClass('MCMCimputation', contains = 'MCMC',
+HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 	fields = list(
-		# Diplotype recontstruction to use
-		#reconstruction = 'Rcpp_DiplotypeReconstructor',
-		#reconstruction = 'Rcpp_DiplotypeReconstructor',
-		reconstruction = 'DiplotypeReconstructor',
-		peds = 'list',
-		state = 'matrix',
 		# <p> pre-computed values
 		N = 'integer',
 		Nhts = 'integer',
@@ -177,34 +169,67 @@ MCMCimputationClass = setRefClass('MCMCimputation', contains = 'MCMC',
 	#
 	#	<p> methods
 	#
+	initialize_cache = function() {
+		peds_ = getPeds();
+		countMarkers = getCountMarkers();
+		# <p> pre-compute
+		Nhts <<- as.integer(2^countMarkers);
+		N <<- length(peds_);
+		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds_))) + 1L);
+		IfoundersPerFamily <<- pedsFounderIdcs(peds_);
+		Ifounders <<- unlist(IfoundersPerFamily);
+		#assign('state0', state[Ifounders, ], envir = .GlobalEnv);
+		.self
+	},
+	getPeds = function()stop('abstract methdod'),
+	getCountMarkers = function()stop('abstract methods'),
+	#
+	# <p> helpers
+	#
+	freqHat = function(state, j) {
+		htfs = table.n(state[setdiff(Ifounders, IfoundersPerFamily[[j]]), ], min = 0, n = Nhts - 1);
+		htfs
+	}
+	#
+	#	</p> methods
+	#
+	)
+);
+HaplotypeHelperClass$accessors(names(HaplotypeHelperClass$fields()));
+
+# forward declaration
+setRefClass('DiplotypeReconstructor');
+
+MCMCimputationClass = setRefClass('MCMCimputation', contains = c('MCMC', 'HaplotypeHelper'),
+	fields = list(
+		peds = 'list',
+		# Diplotype recontstruction to use
+		#reconstruction = 'DiplotypeReconstructor',
+		reconstruction = 'Rcpp_DiplotypeReconstructor',
+		state = 'matrix'
+	),
+	methods = list(
+	#
+	#	<p> methods
+	#
 	initialize = function(...) {
 		.self$initFields(...);
-		# <p> pre-compute
-		Nhts <<- as.integer(2^reconstruction$countMarkers());
+		# Haplotype Helper
+		initialize_cache();
 		# add default prior
 		if (is.null(prior$haplotypes)) prior$haplotypes <<- rep(1, Nhts);
 		# draw first state
 		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
 		state <<- reconstruction$drawFromHfs(htfs, runif(length(peds)));
-
-		# <p> pre-compute
-		N <<- length(peds);
-		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
-		IfoundersPerFamily <<- pedsFounderIdcs(peds);
-		Ifounders <<- unlist(IfoundersPerFamily);
-		#assign('state0', state[Ifounders, ], envir = .GlobalEnv);
 		.self
 	},
+	getCountMarkers = function()reconstruction$countMarkers(),
 	#
 	# <p> helpers
 	#
-	freqHat = function(j) {
-		htfs = table.n(state[setdiff(Ifounders, IfoundersPerFamily[[j]]), ], min = 0, n = Nhts - 1);
-		htfs
-	},
 	redrawFamily = function(j) {
 		# posterior distribution of haplotypes
-		htfsPost = freqHat(j) + prior$haplotypes;
+		htfsPost = freqHat(state, j) + prior$haplotypes;
 		#print(round(vector.std(htfsPost)*36, 1));
 		# <A> module indexes from 0
 		dtsJ = R$drawFamFromHfs(j - 1, htfsPost, runif(1));
@@ -253,12 +278,12 @@ meshLists = function(lolRaw, lolMesh) {
 
 require('MASS');
 
-MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
+MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'HaplotypeHelper'),
 	fields = list(
 		# Diplotype recontstruction to use
-		reconstruction = 'list',
+		reconstructions = 'list',
 		# risk genotypes for each reconstruction
-		reconstructionGts = 'list',
+		reconstructionsGts = 'list',
 		peds = 'list',
 		state = 'list',
 		X = 'matrix',	# design matrix
@@ -270,7 +295,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 	#	<p> methods
 	#
 	genotypesPrecompute = function() {
-		reconstructionGts <<- lapply(reconstruction, function(m) {
+		reconstructionsGts <<- lapply(reconstructions, function(m) {
 			# alleles
 			as = apply(m[, -1, drop = F], c(1, 2), function(e)e%%2);
 			t(apply(as, 1, function(r)apply(matrix(r, byrow = T, ncol = 2), 1, sum)))
@@ -279,16 +304,19 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 		NULL
 	},
 	initialize = function(peds = NULL, ..., NpedSplit = 4) {
-		Npeds = length(peds);
+		Nloci <<- as.integer(log2(max(unlist(reconstructionss)) + 1));
 		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
 		blockLinB = list(beta = 1);
 		blockLinS = list(sigma = 1);
 		lol = list(blockHts, blockLinB, blockLinS);
 		mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
 		blocking = meshLists(lol, mesh);
-		callSuper(peds, ..., blocking = blocking);
+		callSuper(blocking = blocking);
+		# Haplotype Helper
+		initialize_cache();
 		.self
 	},
+	getCountMarkers = function()Nloci,
 	# by convention we regress on the locus 0, corresponding to index 1 in R
 	# loci have to be rearranged in advance to follow this convention if marker order differs
 	genotypes = function() {
@@ -298,7 +326,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 		# derive genotypes
 		gts = genotypes();
 		# build design matrix
-		Xg <<- cbind(gts, X);
+		Xg <- cbind(gts, X);
 		S1inv = diag(1/prior$tau) + t(Xg) %*% Xg / chain$sigma2;
 		S1 = solve(S1inv);
 		mu = S1inv %*% (t(Xg) %*% y) / chain$sigma2;
@@ -313,8 +341,8 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = 'MCMCBlock',
 	update_hts = function(i) {
 		N <<- length(peds);
 		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
-		Preconstruction = sapply(1:nrow(recontructions[[i + 1]]), function(k) {
-			cbind(reconstructionGts[k, ], X[(Ncum[i - 1] + 1):Ncum[i], , drop = F]) %*% state$beta
+		Preconstructions = sapply(1:nrow(recontructions[[i + 1]]), function(k) {
+			cbind(reconstructionsGts[k, ], X[(Ncum[i - 1] + 1):Ncum[i], , drop = F]) %*% state$beta
 		});
 	}
 	#

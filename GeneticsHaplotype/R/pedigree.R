@@ -120,6 +120,7 @@ pedFamilySizes = function(ped) pedsFamilySizes(pedSplit2ivTrios(ped));
 pedsFounderSizes = function(peds) sapply(peds, function(ped)length(ped$founders));
 pedFounderSizes = function(ped) pedsFounderSizes(pedSplit2ivTrios(ped));
 pedsFounderIdcs = function(peds) {
+	if (!length(peds)) return(list());
 	Ns = as.integer(pop(c(0, cumsum(pedsFamilySizes(peds)))));
 	r = lapply(1:length(peds), function(i)peds[[i]]$founders + Ns[i]);
 	r
