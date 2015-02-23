@@ -116,6 +116,8 @@ simulationsFromPed = function(ped, hfs, NsimPped, Nsim, module) {
 #	<p> phenotype helpers
 #
 
+af2hwe = function(q) { c((1-q)^2, 2*q*(1-q), q^2 ) }
+
 logitI = expit = function(x, min = 0, max = 1) { (max - min)/(1 + exp(-x)) + min }
 logit = function(x, min = 0, max = 1) { log((x - min)/(max - x)) }
 
@@ -133,13 +135,25 @@ names(scoresS) = c("D", "A", "R", 'G');
 simulatePhenotypesBinRaw = function(gts, beta, score = 0, scoreGt = scoresL$additive, link = expit) {
 	d = data.frame(scores = scoreGt[gts + 1]);
 	mm = model.matrix(model.frame(~ scores, d), d);
-	risk = expit(mm %*% beta + score);
+	risk = link(mm %*% beta + score);
 	y = as.integer(risk < runif(length(risk)));
 	list(mm = mm, risk = risk, y = y)
 }
 
 simulatePhenotypesBin = function(gts, beta, score = 0, scoreGt = scoresL$additive, link = expit) {
 	simulatePhenotypesBinRaw(gts, beta, score, scoreGt, link)$y
+}
+
+simulatePhenotypesLinearRaw = function(gts, beta, sd = 1, score = 0, scoreGt = scoresL$additive) {
+	d = data.frame(scores = scoreGt[gts + 1]);
+	mm = model.matrix(model.frame(~ scores, d), d);
+	linpred = mm %*% beta + score;
+	y = linpred + rnorm(nrow(mm), sd = sd);
+	list(mm = mm, linpred = linpred, y = y)
+}
+
+simulatePhenotypesLinear = function(gts, beta, sd = 1, score = 0, scoreGt = scoresL$additive) {
+	simulatePhenotypesLinearRaw(gts, beta, sd, score, scoreGt)$y
 }
 
 #

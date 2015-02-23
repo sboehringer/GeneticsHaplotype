@@ -3,18 +3,20 @@
 #Wed Sep  3 18:18:06 CEST 2014
 
 library('devtools');
+
+if (F) {
+	system('rm GeneticsHaplotype/src/*.o GeneticsHaplotype/src/*.so');
+	Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
+	install('GeneticsHaplotype', threads = 6);
+}
+
 library('Rcpp');
 source('GeneticsHaplotype/R/mcmc.R');
 source('GeneticsHaplotype/R/pedigree.R');
 source('GeneticsHaplotype/R/simulation.R');
 source('GeneticsHaplotype/R/Rdata.R');
 
-if (T) {
-	system('rm GeneticsHaplotype/src/*.o GeneticsHaplotype/src/*.so');
-	Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
-	install('GeneticsHaplotype', threads = 6);
-}
-if (T) {
+if (F) {
 	library('GeneticsHaplotype');
 	#M = Module('Reconstructor', PACKAGE = 'GeneticsHaplotype');
 }
@@ -32,7 +34,7 @@ if ( T) {
 			3, 1, 2
 	), byrow = T, ncol = 3));
 }
-if (T) {
+if (F) {
 	hfs = rev(vector.std(1:8));
 	N = 5e2;
 	d = simulateFromTemplate(pedTemplate, N = N, hfs = hfs);
@@ -335,7 +337,7 @@ if (0) {
 	b$run();
 }
 
-if (1) {
+if (0) {
 	require('GeneticsHaplotype');
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	reconstructions = R$reconstructionsAll();
@@ -344,4 +346,22 @@ if (1) {
 		as = apply(m[, -1, drop = F], c(1, 2), function(e)e%%2);
 		t(apply(as, 1, function(r)apply(matrix(r, byrow = T, ncol = 2), 1, sum)))
 	});
+}
+
+if (1) {
+	source('GeneticsHaplotype/R/Rdata.R');
+	source('GeneticsHaplotype/R/simulation.R');
+	require('GeneticsHaplotype');
+
+	# simulate
+	y = simulatePhenotypesLinear(d$gts[, 1], c(0, 5))[, 1];
+	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
+	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+
+	# chain
+	mcmcLin = new('MCMCLinear', y = y, X = X, peds = d$peds, reconstructions = reconstructions,
+		Nburnin = 1e3L, Nchain = 5e3L);
+	mcmcLin$run();
 }

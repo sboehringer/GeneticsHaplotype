@@ -20,7 +20,7 @@ Description: Implements various algorithms needed in genetic haplotype based ana
 License: LGPL 2.0
 Imports: methods, Rcpp (>= 0.11.1)
 LinkingTo: Rcpp
-RcppModules: yada, stdVector, NumEx
+RcppModules: Reconstructor
 
 #
 #	zzz.R

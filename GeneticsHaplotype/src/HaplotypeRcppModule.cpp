@@ -7,9 +7,10 @@
 #include	<Rcpp.h>
 #include	"HaplotypeRwrappers.hpp"
 
-RCPP_MODULE(Reconstructor) {
+RCPP_MODULE(ReconstructorModule) {
 	using namespace Rcpp;
 
+	// class_<c++ class name>('R class name')
 	class_<Reconstructor>("DiplotypeReconstructor")
 		.constructor<SEXP, SEXP>("genotype matrix, list of pedigrees.")
 

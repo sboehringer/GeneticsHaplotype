@@ -63,6 +63,7 @@ activateMethods = function(class, methods) {
 	NULL
 }
 
+last = function(v)v[length(v)]
 #
 #	<p> block updating class
 #
@@ -177,7 +178,7 @@ HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 		N <<- length(peds_);
 		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds_))) + 1L);
 		IfoundersPerFamily <<- pedsFounderIdcs(peds_);
-		Ifounders <<- unlist(IfoundersPerFamily);
+		Ifounders <<- as.integer(unlist(IfoundersPerFamily));
 		#assign('state0', state[Ifounders, ], envir = .GlobalEnv);
 		.self
 	},
@@ -198,14 +199,14 @@ HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 HaplotypeHelperClass$accessors(names(HaplotypeHelperClass$fields()));
 
 # forward declaration
-setRefClass('DiplotypeReconstructor');
+#setRefClass('DiplotypeReconstructor');
 
 MCMCimputationClass = setRefClass('MCMCimputation', contains = c('MCMC', 'HaplotypeHelper'),
 	fields = list(
 		peds = 'list',
 		# Diplotype recontstruction to use
 		#reconstruction = 'DiplotypeReconstructor',
-		reconstruction = 'Rcpp_DiplotypeReconstructor',
+		reconstruction = 'envRefClass',
 		state = 'matrix'
 	),
 	methods = list(
@@ -303,15 +304,16 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 		NULL
 	},
-	initialize = function(peds = NULL, ..., NpedSplit = 4) {
-		Nloci <<- as.integer(log2(max(unlist(reconstructionss)) + 1));
+	initialize = function(peds = NULL, reconstructions = NULL, ..., NpedSplit = 4) {
+		Nloci <<- as.integer(log2(max(unlist(reconstructions)) + 1));
+		Npeds = length(peds);
 		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
 		blockLinB = list(beta = 1);
 		blockLinS = list(sigma = 1);
 		lol = list(blockHts, blockLinB, blockLinS);
 		mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
 		blocking = meshLists(lol, mesh);
-		callSuper(blocking = blocking);
+		callSuper(blocking = blocking, peds = peds, reconstructions = reconstructions, ...);
 		# Haplotype Helper
 		initialize_cache();
 		.self
@@ -319,6 +321,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 	getCountMarkers = function()Nloci,
 	# by convention we regress on the locus 0, corresponding to index 1 in R
 	# loci have to be rearranged in advance to follow this convention if marker order differs
+	# locus number corresponds to binary position in hts
 	genotypes = function() {
 		apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 	},
@@ -341,7 +344,8 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 	update_hts = function(i) {
 		N <<- length(peds);
 		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
-		Preconstructions = sapply(1:nrow(recontructions[[i + 1]]), function(k) {
+browser();
+		Preconstructions = sapply(1:nrow(reconstructions[[i]]), function(k) {
 			cbind(reconstructionsGts[k, ], X[(Ncum[i - 1] + 1):Ncum[i], , drop = F]) %*% state$beta
 		});
 	}
