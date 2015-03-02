@@ -163,6 +163,7 @@ HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 		N = 'integer',
 		Nhts = 'integer',
 		Ncum = 'integer',
+		Ifams = 'list',
 		Ifounders = 'integer',
 		IfoundersPerFamily = 'list'
 	),
@@ -179,6 +180,7 @@ HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds_))) + 1L);
 		IfoundersPerFamily <<- pedsFounderIdcs(peds_);
 		Ifounders <<- as.integer(unlist(IfoundersPerFamily));
+		Ifams <<- pedsIdcs(peds);
 		#assign('state0', state[Ifounders, ], envir = .GlobalEnv);
 		.self
 	},
@@ -295,6 +297,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 	#
 	#	<p> methods
 	#
+	# <!> obsolete
 	genotypesPrecompute = function() {
 		reconstructionsGts <<- lapply(reconstructions, function(m) {
 			# alleles
@@ -304,7 +307,8 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 		NULL
 	},
-	initialize = function(peds = NULL, reconstructions = NULL, ..., NpedSplit = 4) {
+	initialize = function(peds = NULL, reconstructor = NULL, ..., NpedSplit = 4) {
+		reconstructions <<- R$reconstructionsAll();
 		Nloci <<- as.integer(log2(max(unlist(reconstructions)) + 1));
 		Npeds = length(peds);
 		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
@@ -316,14 +320,18 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		callSuper(blocking = blocking, peds = peds, reconstructions = reconstructions, ...);
 		# Haplotype Helper
 		initialize_cache();
+		# initial state
+		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
+		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
 		.self
 	},
 	getCountMarkers = function()Nloci,
 	# by convention we regress on the locus 0, corresponding to index 1 in R
 	# loci have to be rearranged in advance to follow this convention if marker order differs
 	# locus number corresponds to binary position in hts
-	genotypes = function() {
-		apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
+	genotypes = function(i = NULL) {
+		myHts = if (is.null(i)) state$hts else state$hts[Ifams[[i]], , drop = F];
+		apply(myHts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 	},
 	update_beta = function(i) {
 		# derive genotypes
@@ -341,9 +349,17 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		gshape = 1/(1/prior$gshape + res %*% res);
 		state$sigma <<- 1/rgamma(1, shape = gshape, scale = gscale);
 	},
+	#
+	# update family i %% N
+	#	compute conditional outcome likelihood
+	#	compute likelihood of complete families
+	#	draw from joint family distribution
+	# 
 	update_hts = function(i) {
 		N <<- length(peds);
 		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
+		iF = i %% N;
+		gts = genotypes(iF);
 browser();
 		Preconstructions = sapply(1:nrow(reconstructions[[i]]), function(k) {
 			cbind(reconstructionsGts[k, ], X[(Ncum[i - 1] + 1):Ncum[i], , drop = F]) %*% state$beta

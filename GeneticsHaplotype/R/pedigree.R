@@ -125,6 +125,13 @@ pedsFounderIdcs = function(peds) {
 	r = lapply(1:length(peds), function(i)peds[[i]]$founders + Ns[i]);
 	r
 }
+pedsIdcs = function(peds) {
+	if (!length(peds)) return(list());
+	Nfams = pedsFamilySizes(peds);
+	Ns = as.integer(pop(c(0, cumsum(Nfams))));
+	r = lapply(1:length(peds), function(i)(1:Nfams[i]) + Ns[i]);
+	r
+}
 
 plotPedigree = plotPedigree_kinship2 = function(ped, tag = '') {
 	pedu = ped2uniqueId(ped);

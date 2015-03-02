@@ -361,7 +361,7 @@ if (1) {
 	reconstructions = R$reconstructionsAll();
 
 	# chain
-	mcmcLin = new('MCMCLinear', y = y, X = X, peds = d$peds, reconstructions = reconstructions,
+	mcmcLin = new('MCMCLinear', y = y, X = X, peds = d$peds, reconstructor = R,
 		Nburnin = 1e3L, Nchain = 5e3L);
 	mcmcLin$run();
 }
