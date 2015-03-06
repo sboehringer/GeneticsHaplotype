@@ -279,6 +279,8 @@ meshLists = function(lolRaw, lolMesh) {
 	List_(unlist.n(r, 1), rm.null = T);
 }
 
+rmultinomLog = function(n, size = 1, logProb)rmultinom(n, size, vector.std(exp(logProb)))
+
 require('MASS');
 
 MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'HaplotypeHelper'),
@@ -304,13 +306,16 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 			as = apply(m[, -1, drop = F], c(1, 2), function(e)e%%2);
 			t(apply(as, 1, function(r)apply(matrix(r, byrow = T, ncol = 2), 1, sum)))
 		});
-		apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
+		#apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 		NULL
 	},
 	initialize = function(peds = NULL, reconstructor = NULL, ..., NpedSplit = 4) {
+		# determine number of loci, reconstructions
 		reconstructions <<- R$reconstructionsAll();
 		Nloci <<- as.integer(log2(max(unlist(reconstructions)) + 1));
 		Npeds = length(peds);
+
+		# determine blocking
 		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
 		blockLinB = list(beta = 1);
 		blockLinS = list(sigma = 1);
@@ -318,11 +323,19 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
 		blocking = meshLists(lol, mesh);
 		callSuper(blocking = blocking, peds = peds, reconstructions = reconstructions, ...);
-		# Haplotype Helper
+
+		# Haplotype Helper and other initialization
 		initialize_cache();
-		# initial state
+		genotypesPrecompute();
+
+		# priors
+		if (is.null(prior$hts)) prior$hts <<- rep(1, 2^Nloci);
+		
+		# initial state (chain)
 		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
 		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
+		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
+		state$sigma <<- 1;	# use prior parameters <!>
 		.self
 	},
 	getCountMarkers = function()Nloci,
@@ -337,7 +350,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		# derive genotypes
 		gts = genotypes();
 		# build design matrix
-		Xg <- cbind(gts, X);
+		Xg <- cbind(X, gts);
 		S1inv = diag(1/prior$tau) + t(Xg) %*% Xg / chain$sigma2;
 		S1 = solve(S1inv);
 		mu = S1inv %*% (t(Xg) %*% y) / chain$sigma2;
@@ -356,14 +369,36 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 	#	draw from joint family distribution
 	# 
 	update_hts = function(i) {
+		# preparation
 		N <<- length(peds);
 		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
 		iF = i %% N;
-		gts = genotypes(iF);
-browser();
-		Preconstructions = sapply(1:nrow(reconstructions[[i]]), function(k) {
-			cbind(reconstructionsGts[k, ], X[(Ncum[i - 1] + 1):Ncum[i], , drop = F]) %*% state$beta
+		famSel = Ncum[iF]:(Ncum[iF + 1] - 1);
+
+		# haplotype frequencies
+		NhtsI = freqHat(state$hts, iF);
+		logPhts = log(vector.std(NhtsI + prior$hts));
+		Ifdrs = peds[[iF]]$founders;	#relative indeces
+
+		# log-probs reconstructions
+		Preconstructions = sapply(1:nrow(reconstructions[[iF]]), function(k) {
+			# linear predictor
+			E = cbind(X[famSel, , drop = F], reconstructionsGts[[iF]][k, ]) %*%
+				state$beta;
+			# likelihood phenotypes
+			llPts = sum(dnorm(y[famSel], E, sd = state$sigma, log = TRUE));
+			# likelihood haplotyeps
+			logFactor = reconstructions[[iF]][k, 1] * log(2);
+			htsFounders = matrix(reconstructions[[iF]][k, -1], byrow = T, nrow = 2)[, Ifdrs, drop = F];
+			llHts = logFactor + sum(logPhts[as.vector(htsFounders + 1)]);
+			ll = llPts + llHts;
+			ll
 		});
+		# draw family haplotypes as a block
+		draw = 1:nrow(reconstructions[[iF]]) %*% rmultinomLog(1, 1, Preconstructions);
+		htsI = t(matrix(reconstructions[[iF]][draw, -1], byrow = T, nrow = 2));
+		state$hts[Ifams[[iF]], ] <<- htsI;
+		NULL
 	}
 	#
 	#	</p> methods

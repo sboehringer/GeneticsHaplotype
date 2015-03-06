@@ -15,6 +15,11 @@ Environment Profile=
 Extra Arguments=
 Install Directory=file:///usr/local
 
+[Defines And Includes][Compiler]
+Name=GCC
+Path=gcc
+Type=GCC
+
 [Launch]
 Launch Configurations=Launch Configuration 0
 
