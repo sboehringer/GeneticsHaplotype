@@ -348,7 +348,7 @@ if (0) {
 	});
 }
 
-if (1) {
+if (0) {
 	source('GeneticsHaplotype/R/Rdata.R');
 	source('GeneticsHaplotype/R/simulation.R');
 	require('GeneticsHaplotype');
@@ -364,4 +364,12 @@ if (1) {
 	mcmcLin = new('MCMCLinear', y = y, X = X, peds = d$peds, reconstructor = R,
 		Nburnin = 1e3L, Nchain = 5e3L);
 	mcmcLin$run();
+}
+
+# 9.3.2015: debugging
+if (F) save(d, file = 'debugging/reconstructionError.Rdata');
+if (1) {
+	reconstructions = R$reconstructionsAll();
+	gts64 = d$gts[pedsIdcs(d$peds)[[64]], ];
+	plotPedigree(d$ped[pedsIdcs(d$peds)[[64]],], tag = apply(gts64, 1, function(r)paste(r, collapse = ',')))
 }
