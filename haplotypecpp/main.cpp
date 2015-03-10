@@ -59,6 +59,12 @@ vector<g>	ped2Genotypes1 {	// genotypes by row, individuals by column 0..5
 	g { 1, 1, 1, 1, 1 }
 };
 
+vector<g>	ped2Genotypes2 {	// genotypes by row, individuals by column 0..5
+	g { 2, 0, 1, 0, 0 },
+	g { 1, 1, 1, 2, 1 },
+	g { 0, 0, 0, 1, 0 }
+};
+
 pedigree_t	ped3 {
 	{ 0, 1 },
 	{ 	vector<iid_t> { 2, 0, 1 } }
@@ -120,6 +126,9 @@ int main(int argc, char **argv) {
 	reconstruct(ped1, ped1Genotypes3);
 	reconstruct(ped1, ped1Genotypes4);
 #	endif
+#	if 1
+	reconstruct(ped2, ped2Genotypes2);
+#	endif
 
 #	if 0
 #	define	Ndraws	4
@@ -135,7 +144,7 @@ int main(int argc, char **argv) {
 	//drawN(Ndraws, ped1, ped1Genotypes4, hfs1);
 	drawN(Ndraws, ped3, ped3Genotypes2, hfs1);
 #	endif
-#	if 1
+#	if 0
 #	define	Ndraws	4
 	const hfs_t		hfs1(vector<haplotypefs_t> { 8, 4 });
 	//drawN(Ndraws, ped1, ped1Genotypes4, hfs1);

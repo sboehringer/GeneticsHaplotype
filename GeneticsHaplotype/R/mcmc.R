@@ -136,7 +136,8 @@ MCMCBlockClass = setRefClass('MCMCBlock', contains = 'MCMC',
 				j - NcumPad[Ic] +
 				# add cumulative #updates taken for the current component in the current round
 				NcumPerComp[[n]][IcumComp[[Ic]]] + 1;
-			.self[[updateMethods[Ic]]](Iwi);
+				method_ = .self[[updateMethods[Ic]]];
+				method_(Iwi);
 		}
 	},
 	update_beta = function(i) {
@@ -336,6 +337,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
 		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
 		state$sigma <<- 1;	# use prior parameters <!>
+		prior$tau <<- 1;	# use prior parameters <!>
 		.self
 	},
 	getCountMarkers = function()Nloci,
@@ -351,15 +353,16 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		gts = genotypes();
 		# build design matrix
 		Xg <- cbind(X, gts);
-		S1inv = diag(1/prior$tau) + t(Xg) %*% Xg / chain$sigma2;
+		S1inv = diag(1/prior$tau, ncol(Xg)) + t(Xg) %*% Xg / state$sigma;
 		S1 = solve(S1inv);
-		mu = S1inv %*% (t(Xg) %*% y) / chain$sigma2;
+		mu = S1inv %*% (t(Xg) %*% y) / state$sigma;
 		state$beta <<- mvrnorm(1, mu, S1);
 	},
 	update_sigma = function(i) {
-		res = y - Xg %*% state$beta;
+		Xg <- cbind(X,  genotypes());
+		res = as.vector(y) - Xg %*% state$beta;
 		gscale = prior$gscale + nrow(Xg)/2;
-		gshape = 1/(1/prior$gshape + res %*% res);
+		gshape = 1/(1/prior$gshape + t(res) %*% res);
 		state$sigma <<- 1/rgamma(1, shape = gshape, scale = gscale);
 	},
 	#

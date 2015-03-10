@@ -7,3 +7,7 @@ RgenericAll.R
 
 misc
 debugging
+haplotypecpp/CMakeCache.txt
+haplotypecpp/Makefile
+haplotypecpp/cmake_install.cmake
+haplotypecpp/CMakeFiles/

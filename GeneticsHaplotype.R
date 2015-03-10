@@ -348,7 +348,7 @@ if (0) {
 	});
 }
 
-if (0) {
+if (1) {
 	source('GeneticsHaplotype/R/Rdata.R');
 	source('GeneticsHaplotype/R/simulation.R');
 	require('GeneticsHaplotype');
@@ -368,8 +368,9 @@ if (0) {
 
 # 9.3.2015: debugging
 if (F) save(d, file = 'debugging/reconstructionError.Rdata');
-if (1) {
-	reconstructions = R$reconstructionsAll();
+if (0) {
+	#load('debugging/reconstructionError.Rdata')
+	#reconstructions = R$reconstructionsAll();
 	gts64 = d$gts[pedsIdcs(d$peds)[[64]], ];
 	plotPedigree(d$ped[pedsIdcs(d$peds)[[64]],], tag = apply(gts64, 1, function(r)paste(r, collapse = ',')))
 }

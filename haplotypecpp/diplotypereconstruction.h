@@ -87,6 +87,12 @@ public:
 };
 
 struct ReconstructionArray {
+	// alternative intialization
+	ReconstructionArray(int _tag, DiplotypeReconstructionSNPunordered& d, buffer_t *e)
+	: hts(e, 0, d.bitsHt(), 2*d.Nfounders()),
+	  iv(BitArrayAfter_e, hts, 2*d.Nitrios(), 1),
+	  factor(BitArrayAfter_e, iv, d.bitsFactor(), 1)
+	{}
 	ReconstructionArray(DiplotypeReconstructionSNPunordered& d, buffer_t *e)
 	: hts(e, 0, d.bitsHt(), 2*d.Nfounders()),
 	  iv(BitArrayAfter_e, hts, 1, 2*d.Nitrios()),
@@ -95,10 +101,43 @@ struct ReconstructionArray {
 	ReconstructionArray(DiplotypeReconstructionSNPunordered& d, int i)
 	: ReconstructionArray(d, d.reconstructionAt(i))
 	{}
+public:
+	void set(const vector<diplotype_t> &dtFounder, const vector<bool> iv_) {
+		// encode reconstruction
+		int			factor_ = 0;
+		for (iid_t i = 0; i < dtFounder.size(); i++) {
+			hts.set(2*i,     dtFounder[i].d1);
+			hts.set(2*i + 1, dtFounder[i].d2);
+			if (dtFounder[i].d1 != dtFounder[i].d2) factor_++;
+		}
+		for (iid_t i = 0; i < iv_.size(); i++) iv.set(i, iv_[i]);
+		factor.set(0, factor_);
+	}
 
 	BitArray<buffer_t, iid_t>	hts;
 	BitArray<buffer_t, iid_t>	iv;
 	BitArray<buffer_t, iid_t>	factor;
+};
+// same as above, expeception: treat IV as an integer
+struct ReconstructionArrayIvBlock : public ReconstructionArray {
+	ReconstructionArrayIvBlock(DiplotypeReconstructionSNPunordered& d, buffer_t *e)
+	: ReconstructionArray(0, d, e)
+	{}
+	ReconstructionArrayIvBlock(DiplotypeReconstructionSNPunordered& d, int i)
+	: ReconstructionArrayIvBlock(d, d.reconstructionAt(i))
+	{}
+public:
+	void set(const vector<diplotype_t> &dts, iid_t iv_) {
+		iid_t factor_ = 0;
+		for (iid_t i = 0; i < dts.size(); i++) {
+			hts.set(2*i,     dts[i].d1);
+			hts.set(2*i + 1, dts[i].d2);
+			if (dts[i].d1 != dts[i].d2) factor_++;
+		}
+		iv.set(0, iv_);
+		factor.set(0, factor_);
+
+	}
 };
 
 /*

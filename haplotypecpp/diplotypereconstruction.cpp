@@ -60,20 +60,25 @@ DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
  *       - assume 2 bits per locus and half the number of bits for the split
  *         - case (*) is special: if #het == 0 && locus == 0 && a1 > a2 continue
  *     - embed ambiguous part into het-bitmap, other diplotype gets complement
- *   - iterate inheritance vector
- *     - iterate all four possible transmissions
- *     - form transmitted genotype (with missingness masked to 0)
- *     - compare against offspring genotype
- *     - of the 4 possiblities a maximum of 2 can be possible leading to same unordered offsping diplotype (**)
- *       - proof: mother can transmit both diplotypes to offspring => one diplotype shared between parents for
- *         first transmission, symmetric argument => parents have same diplotype => offspring has same diplotype
+ *   - iterate inheritance vectors (including direction)
+ *     - compare expected transmission genotype against offspring genotype
  * - determine mulitplicity (due to unorderedness during algorithm above)
  *   - #het > 0 contributes factor of two per founder
  *   - ambiguous transmissions do not contribute (already covered by step above)
+ *
+ *   - of the 4 possiblities a maximum of 2 can be possible be leading to same unordered offsping diplotype (**)
+ *      - proof: mother can transmit both haplotypes to offspring => subtraction in offspring determines other
+ *        alleles of father => different diplotype constitutions possible for offspring
  */
 
 inline haplotype_t	selectFromDiplotype(diplotype_t dt, bool index) {
 	return !index? dt.d1: dt.d2;
+}
+inline bool	diplotypeIsHet(diplotype_t dt) {
+	return dt.d1 != dt.d2;
+}
+inline bool	diplotypeIsHom(diplotype_t dt) {
+	return !diplotypeIsHet(dt);
 }
 
 void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) {
@@ -86,74 +91,41 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 	marker_t								cm = fetcher.countMarkers();
 
 	while (founderReconst.founderReconstruction(dtFounder)) {
-		for (int i = 0; i < dtFounder.size(); i++)
+		iid_t	factor = 0;	//factor of multiplicity for reconstruction
+		for (int i = 0; i < dtFounder.size(); i++) {
 			dts[pedigree.founders()[i]] = dtFounder[i];
+			factor += diplotypeIsHet(dtFounder[i]);
+		}
+		// inheritance vector iterator
+		for (iid_t ivI = 0, j = 0; ivI < (1 << (2*pedigree.sizeItrios())); ivI++) {
+			// check for consistent transmission
+			for (j = 0; j < pedigree.sizeItrios(); j++) {
+				iid_t			id = pedigree.trioIid(j), mid = pedigree.trioMid(j), pid = pedigree.trioPid(j);
+				haplotype_t		miss = fetcher.maskMissing(id);
+				haplotype_t		htm = selectFromDiplotype(dts[mid], bitAt<iid_t>(ivI, 2*j));
+				haplotype_t		htp = selectFromDiplotype(dts[pid], bitAt<iid_t>(ivI, 2*j + 1));
+				// expected genotype combination
+				genotypecomb_t	gtcE = genotypeCombinationFromDiplotype((diplotype_t){htm, htp}, cm, miss);
+				genotypecomb_t	gtcO = fetcher.genotypeCombination(id);	//offspring
 
-		iid_t j;
-		for (j = 0; j < pedigree.sizeItrios(); j++) {
-			iid_t			id = pedigree.trioIid(j), mid = pedigree.trioMid(j), pid = pedigree.trioPid(j);
-			diplotype_t		dtm = dts[mid], dtp = dts[pid];
-			haplotype_t		miss = fetcher.maskMissing(id);
-			// read index gtcIJ right-to-left
-			genotypecomb_t	gtc00 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d1, dtp.d1}, cm, miss);
-			genotypecomb_t	gtc10 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d1, dtp.d2}, cm, miss);
-			genotypecomb_t	gtc01 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d2, dtp.d1}, cm, miss);
-			genotypecomb_t	gtc11 = genotypeCombinationFromDiplotype((diplotype_t){dtm.d2, dtp.d2}, cm, miss);
-			genotypecomb_t	gtcO = fetcher.genotypeCombination(id);	//offspring
-
-			if (gtcO != gtc00 && gtcO != gtc01 && gtcO != gtc10 && gtcO != gtc11) break;
-			// both parents heterozygous && both transmissions possible
-			// for homozygous parents identical situations arise -> not relevant for unordered likelihood
-			bothTransm[j] = (dtm.d1 != dtm.d2) && (dtp.d1 != dtp.d2)
-				&& ((gtcO == gtc00 && gtcO == gtc11) || (gtcO == gtc01 && gtcO == gtc10));
-#			if 0
-			// <!> might produce inconsistent iv-entries
-			iv[2*j] = !(gtcO == gtc00 || gtcO == gtc10);
-			iv[2*j + 1] = !(gtcO == gtc00 || gtcO == gtc01);
-#			elif 1
-			// compute possible inheritance vector: first haplotype from grandmother =^= 0
-			// if needed to make both entries of iv consistent (<N> special case: bothTransm)
-			iv[2*j] = !(gtcO == gtc00 || gtcO == gtc10);
-			iv[2*j + 1] = !iv[2*j]? (gtcO == gtc10): (gtcO == gtc11);
-#			else // longer version of the above
-			if ((gtcO == gtc00 || gtcO == gtc10)) {
-				iv[2*j] = 0;
-				iv[2*j + 1] = gtcO == gtc10;
-			} else {
-				iv[2*j] = 1;
-				iv[2*j + 1] = gtcO == gtc11;
+				// if founder was homozygous, we only consider one transmission (we are unordered)
+				if ( (diplotypeIsHom(dts[mid]) && bitAt<iid_t>(ivI, 2*j) > 0)
+				  || (diplotypeIsHom(dts[pid]) && bitAt<iid_t>(ivI, 2*j + 1) > 0)) {
+					factor += diplotypeIsHom(dts[mid]) + diplotypeIsHom(dts[pid]);
+					break;
+				}
+				if (gtcO != gtcE) break;
+				dts[id] = (diplotype_t){htm, htp};
 			}
-#			endif
-			// save offspring diplotype for reference for other I-trios
-			dts[id] = (diplotype_t){
-				selectFromDiplotype(dtm, iv[2*j]),
-				selectFromDiplotype(dtp, iv[2*j + 1]) };
-			// are both directions of transmission possible?
+			// founder diplotypes not compatible with offspring genotypes
+			if (j < pedigree.sizeItrios()) continue;
+			// save reconstruction
+			buffer_t	*e = reconstruction.push();
+			ReconstructionArrayIvBlock	r(*this, e);
+			r.set(dtFounder, ivI);
 		}
-		// founder diplotypes not compatible with offspring genotypes
-		if (j < pedigree.sizeItrios()) continue;
-
-		// encode reconstruction
-		buffer_t	*e = reconstruction.push();
-		int			factor = 0;
-		ReconstructionArray	r(*this, e);
-
-		for (iid_t i = 0; i < Nfounders(); i++) {
-			r.hts.set(2*i,     dtFounder[i].d1);
-			r.hts.set(2*i + 1, dtFounder[i].d2);
-			if (dtFounder[i].d1 != dtFounder[i].d2) factor++;
-		}
-		for (iid_t i = 0; i < Nitrios(); i++) {
-			r.iv.set(2*i,	 iv[2*i]);
-			r.iv.set(2*i + 1,iv[2*i + 1]);
-			if (bothTransm[i]) factor++;
-		}
-		r.factor.set(0, factor);
 
 	}
-// 	//CartesianIterator<int>	&i = *(this->founderIterator(fetcher));
-// 
-// 	
 }
 
 DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
