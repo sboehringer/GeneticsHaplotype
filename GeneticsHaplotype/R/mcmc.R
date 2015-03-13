@@ -136,8 +136,8 @@ MCMCBlockClass = setRefClass('MCMCBlock', contains = 'MCMC',
 				j - NcumPad[Ic] +
 				# add cumulative #updates taken for the current component in the current round
 				NcumPerComp[[n]][IcumComp[[Ic]]] + 1;
-				method_ = .self[[updateMethods[Ic]]];
-				method_(Iwi);
+			method_ = .self[[updateMethods[Ic]]];
+			method_(Iwi);
 		}
 	},
 	update_beta = function(i) {
@@ -284,6 +284,12 @@ rmultinomLog = function(n, size = 1, logProb)rmultinom(n, size, vector.std(exp(l
 
 require('MASS');
 
+sqrtMatrix = function(V) {
+	Vsvd = svd(V);
+	Vsqrt = Vsvd$u %*% diag(sqrt(Vsvd$d)) %*% t(Vsvd$v);
+}
+matrixM12 = function(V) solve(sqrtMatrix(V))
+
 MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'HaplotypeHelper'),
 	fields = list(
 		# Diplotype recontstruction to use
@@ -336,8 +342,16 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
 		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
 		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
-		state$sigma <<- 1;	# use prior parameters <!>
-		prior$tau <<- 1;	# use prior parameters <!>
+		state$sigma <<- 1;	# use prior parameters <!>, sigma is variance <!>
+		prior$betaMu <<- rep(0, ncol(X) + 1);			# use prior parameters <!>
+		prior$betaVar <<- diag(rep(5, ncol(X) + 1));	# use prior parameters <!>
+		prior$giscale <<- 2;
+		prior$gishape <<- 5;
+
+		# <p> precompute prior-derivates
+		prior$betaVarM12 <<- matrixM12(prior$betaVar);	# use prior parameters <!>
+		prior$betaVarInv <<- solve(prior$betaVar);	# use prior parameters <!>
+		prior$betaMuScaled <<- prior$betaVarInv %*% prior$betaMu;	# use prior parameters <!>
 		.self
 	},
 	getCountMarkers = function()Nloci,
@@ -349,21 +363,28 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		apply(myHts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 	},
 	update_beta = function(i) {
-		# derive genotypes
-		gts = genotypes();
 		# build design matrix
-		Xg <- cbind(X, gts);
-		S1inv = diag(1/prior$tau, ncol(Xg)) + t(Xg) %*% Xg / state$sigma;
+		Xg <- cbind(X, genotypes());
+		# compute posterior distribution (mean, cov-mat of MVN)
+		S1inv = prior$betaVarInv + t(Xg) %*% Xg / state$sigma;
 		S1 = solve(S1inv);
-		mu = S1inv %*% (t(Xg) %*% y) / state$sigma;
+		mu = S1 %*% (prior$betaMuScaled + t(Xg) %*% y) / state$sigma;
+		# draw new state
+print(Xg);
+print(mu);
+print(S1);
 		state$beta <<- mvrnorm(1, mu, S1);
+		print(sprintf('Beta: %.2f', state$beta))
+		NULL
 	},
 	update_sigma = function(i) {
-		Xg <- cbind(X,  genotypes());
+		Xg <- cbind(X, genotypes());
 		res = as.vector(y) - Xg %*% state$beta;
-		gscale = prior$gscale + nrow(Xg)/2;
-		gshape = 1/(1/prior$gshape + t(res) %*% res);
-		state$sigma <<- 1/rgamma(1, shape = gshape, scale = gscale);
+		gishape = prior$gishape + nrow(Xg)/2;
+		giscale = prior$giscale + (t(res) %*% res)/2;
+		state$sigma <<- 1/rgamma(1, shape = gishape, scale = 1/as.numeric(giscale));
+		print(sprintf('Sigma: %.2f', state$sigma));
+		NULL
 	},
 	#
 	# update family i %% N
@@ -375,7 +396,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		# preparation
 		N <<- length(peds);
 		Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
-		iF = i %% N;
+		iF = (i - 1) %% N + 1;
 		famSel = Ncum[iF]:(Ncum[iF + 1] - 1);
 
 		# haplotype frequencies

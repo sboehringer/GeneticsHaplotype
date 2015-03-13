@@ -354,7 +354,7 @@ if (1) {
 	require('GeneticsHaplotype');
 
 	# simulate
-	y = simulatePhenotypesLinear(d$gts[, 1], c(0, 5))[, 1];
+	y = simulatePhenotypesLinear(d$gts[, 1], c(0, 5), sd = 3)[, 1];
 	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
 	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
@@ -373,4 +373,10 @@ if (0) {
 	#reconstructions = R$reconstructionsAll();
 	gts64 = d$gts[pedsIdcs(d$peds)[[64]], ];
 	plotPedigree(d$ped[pedsIdcs(d$peds)[[64]],], tag = apply(gts64, 1, function(r)paste(r, collapse = ',')))
+}
+
+
+
+if (0) {
+	print(matrixM12(diag(rep(3, 3))))
 }
