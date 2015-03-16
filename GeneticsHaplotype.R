@@ -352,9 +352,13 @@ if (1) {
 	source('GeneticsHaplotype/R/Rdata.R');
 	source('GeneticsHaplotype/R/simulation.R');
 	require('GeneticsHaplotype');
+	# get reconstructions for debuggin
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+	test_reconstruction(d, reconstructions);
 
 	# simulate
-	y = simulatePhenotypesLinear(d$gts[, 1], c(0, 5), sd = 3)[, 1];
+	y = simulatePhenotypesLinear(d$gts[, 1], c(0, 7), sd = 1)[, 1];
 	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
 	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));

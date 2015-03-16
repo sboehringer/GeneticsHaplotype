@@ -300,7 +300,8 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		state = 'list',
 		X = 'matrix',	# design matrix
 		y = 'numeric',	# response vector
-		Nloci = 'integer'
+		Nloci = 'integer',
+		gtScores = 'numeric'
 	),
 	methods = list(
 	#
@@ -352,6 +353,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		prior$betaVarM12 <<- matrixM12(prior$betaVar);	# use prior parameters <!>
 		prior$betaVarInv <<- solve(prior$betaVar);	# use prior parameters <!>
 		prior$betaMuScaled <<- prior$betaVarInv %*% prior$betaMu;	# use prior parameters <!>
+		gtScores <<- scoresL$additive;
 		.self
 	},
 	getCountMarkers = function()Nloci,
@@ -364,13 +366,12 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 	},
 	update_beta = function(i) {
 		# build design matrix
-		Xg <- cbind(X, genotypes());
+		Xg <- cbind(X, gtScores[genotypes() + 1]);
 		# compute posterior distribution (mean, cov-mat of MVN)
 		S1inv = prior$betaVarInv + t(Xg) %*% Xg / state$sigma;
 		S1 = solve(S1inv);
-		mu = S1 %*% (prior$betaMuScaled + t(Xg) %*% y) / state$sigma;
+		mu = S1 %*% ((prior$betaMuScaled + t(Xg) %*% y) / state$sigma);
 		# draw new state
-print(Xg);
 print(mu);
 print(S1);
 		state$beta <<- mvrnorm(1, mu, S1);
@@ -378,7 +379,7 @@ print(S1);
 		NULL
 	},
 	update_sigma = function(i) {
-		Xg <- cbind(X, genotypes());
+		Xg <- cbind(X, gtScores[genotypes() + 1]);
 		res = as.vector(y) - Xg %*% state$beta;
 		gishape = prior$gishape + nrow(Xg)/2;
 		giscale = prior$giscale + (t(res) %*% res)/2;
@@ -420,7 +421,7 @@ print(S1);
 		});
 		# draw family haplotypes as a block
 		draw = 1:nrow(reconstructions[[iF]]) %*% rmultinomLog(1, 1, Preconstructions);
-		htsI = t(matrix(reconstructions[[iF]][draw, -1], byrow = T, nrow = 2));
+		htsI = matrix(reconstructions[[iF]][draw, -1], byrow = T, ncol = 2);
 		state$hts[Ifams[[iF]], ] <<- htsI;
 		NULL
 	}

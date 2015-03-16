@@ -177,3 +177,16 @@ test_drawCompatibility = function(ped, hfs, Nsim = 1e2, module) {
 	});
 	NULL
 }
+
+test_reconstruction = function(d, reconstructions) {
+	pedI = pedsIdcs(d$peds);
+
+	sapply(1:length(reconstructions), function(i) {
+		sapply(1:nrow(reconstructions[[i]]), function(j) {
+			dts = matrix(reconstructions[[i]][j, -1], byrow = T, ncol = 2);
+			if (any(d$gts[pedI[[i]], ] != diplotypes2gtsDose(dts))) {
+				stop('diplotypes incompatible with genotypes.');
+			}
+		})
+	})
+}
