@@ -65,8 +65,8 @@ diplotypes2gts = function(dts, countLoci = ceiling(log2(max(dts) + 1)), summariz
 	)), nrow = countLoci);
 	t(gts)
 }
-diplotypes2gtsDose = function(dt, countLoci = ceiling(log2(max(dts) + 1)), summarize = sum, ...) {
-	diplotypes2gts(dt, countLoci, summarize, ...)
+diplotypes2gtsDose = function(dts, countLoci = ceiling(log2(max(dts) + 1)), summarize = sum, ...) {
+	diplotypes2gts(dts, countLoci, summarize, ...)
 }
 
 #
@@ -180,11 +180,12 @@ test_drawCompatibility = function(ped, hfs, Nsim = 1e2, module) {
 
 test_reconstruction = function(d, reconstructions) {
 	pedI = pedsIdcs(d$peds);
+	countLoci = ceiling(log2(max(d$dts) + 1));
 
 	sapply(1:length(reconstructions), function(i) {
 		sapply(1:nrow(reconstructions[[i]]), function(j) {
 			dts = matrix(reconstructions[[i]][j, -1], byrow = T, ncol = 2);
-			if (any(d$gts[pedI[[i]], ] != diplotypes2gtsDose(dts))) {
+			if (any(d$gts[pedI[[i]], ] != diplotypes2gtsDose(dts, countLoci))) {
 				stop('diplotypes incompatible with genotypes.');
 			}
 		})

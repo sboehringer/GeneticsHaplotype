@@ -358,7 +358,7 @@ if (1) {
 	test_reconstruction(d, reconstructions);
 
 	# simulate
-	y = simulatePhenotypesLinear(d$gts[, 1], c(0, 7), sd = 1)[, 1];
+	y = simulatePhenotypesLinear(d$gts[, 1], c(0, 7), sd = 2)[, 1];
 	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
 	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
@@ -366,9 +366,37 @@ if (1) {
 
 	# chain
 	mcmcLin = new('MCMCLinear', y = y, X = X, peds = d$peds, reconstructor = R,
-		Nburnin = 1e3L, Nchain = 5e3L);
+		Nburnin = 1e3L, Nchain = 1e5L);
 	mcmcLin$run();
 }
+
+# chain is matrix with parameter per row
+plotChain = function(chain, parSim = NULL) {
+	require(ggplot2);
+	require(grid);
+	require(gridExtra);
+
+	ps = lapply(1:nrow(chain), function(i) {
+		df = data.frame(par = chain[i, ], it = 1:ncol(chain), yinter = parSim[i]);
+		p = ggplot() + geom_line(data = df, aes(it, par)) + 
+			#scale_y_reverse() + 
+			 scale_y_continuous(name = row.names(chain)[i]) + theme_bw();
+		if (!is.null(parSim)) {
+			p = p + geom_line(data = df, aes(it, yinter), alpha = .5);
+		}
+		ggplot_gtable(ggplot_build(p))
+	});
+	p = do.call(grid.arrange, c(ps, list(ncol = 2, nrow = ceiling(length(ps)/2))));
+	p
+}
+
+if (1) {
+	pars = sapply(mcmcLin$chain, unlist)
+	pars1 = pars[, -(1:5)];
+	p = plotChain(pars, parSim = c(vector.std(d$dtfs), c(0, 7), 4));
+	p1 = plotChain(pars1, parSim = c(vector.std(d$dtfs), c(0, 7), 4));
+}
+
 
 # 9.3.2015: debugging
 if (F) save(d, file = 'debugging/reconstructionError.Rdata');

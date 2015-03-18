@@ -109,9 +109,9 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 				genotypecomb_t	gtcO = fetcher.genotypeCombination(id);	//offspring
 
 				// if founder was homozygous, we only consider one transmission (we are unordered)
+				factor += diplotypeIsHom(dts[mid]) + diplotypeIsHom(dts[pid]);
 				if ( (diplotypeIsHom(dts[mid]) && bitAt<iid_t>(ivI, 2*j) > 0)
 				  || (diplotypeIsHom(dts[pid]) && bitAt<iid_t>(ivI, 2*j + 1) > 0)) {
-					factor += diplotypeIsHom(dts[mid]) + diplotypeIsHom(dts[pid]);
 					break;
 				}
 				if (gtcO != gtcE) break;

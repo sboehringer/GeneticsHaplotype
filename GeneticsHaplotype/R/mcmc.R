@@ -138,6 +138,10 @@ MCMCBlockClass = setRefClass('MCMCBlock', contains = 'MCMC',
 				NcumPerComp[[n]][IcumComp[[Ic]]] + 1;
 			method_ = .self[[updateMethods[Ic]]];
 			method_(Iwi);
+			if ((length(.self$NsampleSpacing) &&
+				(i > Nburnin && ((i - Nburnin - 1) %% NsampleSpacing) == 0)) || j == 0) {
+				.self$sample();
+			}
 		}
 	},
 	update_beta = function(i) {
@@ -307,7 +311,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 	#
 	#	<p> methods
 	#
-	# <!> obsolete
+	# precompute genotypes for all reconstructions -> haplotype drawing
 	genotypesPrecompute = function() {
 		reconstructionsGts <<- lapply(reconstructions, function(m) {
 			# alleles
@@ -372,8 +376,6 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		S1 = solve(S1inv);
 		mu = S1 %*% ((prior$betaMuScaled + t(Xg) %*% y) / state$sigma);
 		# draw new state
-print(mu);
-print(S1);
 		state$beta <<- mvrnorm(1, mu, S1);
 		print(sprintf('Beta: %.2f', state$beta))
 		NULL
@@ -408,7 +410,7 @@ print(S1);
 		# log-probs reconstructions
 		Preconstructions = sapply(1:nrow(reconstructions[[iF]]), function(k) {
 			# linear predictor
-			E = cbind(X[famSel, , drop = F], reconstructionsGts[[iF]][k, ]) %*%
+			E = cbind(X[famSel, , drop = F], gtScores[reconstructionsGts[[iF]][k, ] + 1]) %*%
 				state$beta;
 			# likelihood phenotypes
 			llPts = sum(dnorm(y[famSel], E, sd = state$sigma, log = TRUE));
@@ -424,7 +426,14 @@ print(S1);
 		htsI = matrix(reconstructions[[iF]][draw, -1], byrow = T, ncol = 2);
 		state$hts[Ifams[[iF]], ] <<- htsI;
 		NULL
+	},
+	getParameter = function() {
+		#if (any(state[Ifounders, ] - state0 != 0)) print(which(state[Ifounders, ] - state0 != 0));
+		list(htfs = table.n.freq(state$hts[Ifounders, ], min = 0, n = Nhts - 1),
+			beta = state$beta, sigma = state$sigma
+		)
 	}
+
 	#
 	#	</p> methods
 	#
