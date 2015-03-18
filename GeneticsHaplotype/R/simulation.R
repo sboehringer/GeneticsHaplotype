@@ -156,6 +156,15 @@ simulatePhenotypesLinear = function(gts, beta, sd = 1, score = 0, scoreGt = scor
 	simulatePhenotypesLinearRaw(gts, beta, sd, score, scoreGt)$y
 }
 
+simulatePhenotypesLinearReFam = function(pedIdcs, gts, beta, sd = 1, score = 0,
+	scoreGt = scoresL$additive, sdRe = 1) {
+
+	reFam = rnorm(length(pedIdcs), 0, sdRe);
+	scoreReNO = unlist(lapply(1:length(pedIdcs), function(i)rep(reFam[i], length(pedIdcs[[i]]))));
+	scoreRe = scoreReNO[inverseOrder(unlist(pedIdcs))];
+	simulatePhenotypesLinearRaw(gts, beta, sd, score + scoreRe, scoreGt, sdRe)$y
+}
+
 #
 #	unit tests
 #
