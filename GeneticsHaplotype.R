@@ -445,3 +445,27 @@ if (0) {
 	pars1 = pars[, -(1:5)];
 	p1 = plotChain(pars1, parSim = c(vector.std(d$dtfs), c(0, 7), 4, 1));
 }
+
+pedIdParents = function(id, itrios) with(itrios, {
+	pedParentsFollow = function(id, dist) {
+		if (!(id %in% iid)) return(NULL);
+		idI = which(iid == id);
+		rbind(
+			matrix(c(mid[idI], dist + 1, pid[idI], dist + 1), byrow = T, ncol = 2),
+			pedParentsFollow(mid[idI], dist + 1),
+			pedParentsFollow(pid[idI], dist + 1)
+		)
+	};
+	pedParentsFollow(id, 0)
+})
+# ped is in founders/itrios format
+pedAncestry = function(itrios) {
+	ancestry = nlapply(itrios$iid, pedIdParents, itrios = itrios);
+	ancestry
+}
+
+if (1) {
+	print(pedIdParents(3, peds[[1]]$itrios));
+	print(pedIdParents(5, peds[[1]]$itrios));
+	print(pedAncestry(peds[[1]]$itrios));
+}
