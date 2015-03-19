@@ -348,7 +348,7 @@ if (0) {
 	});
 }
 
-if (1) {
+if (0) {
 	source('GeneticsHaplotype/R/Rdata.R');
 	source('GeneticsHaplotype/R/simulation.R');
 	require('GeneticsHaplotype');
@@ -390,7 +390,7 @@ plotChain = function(chain, parSim = NULL) {
 	p
 }
 
-if (1) {
+if (0) {
 	pars = sapply(mcmcLin$chain, unlist)
 	pars1 = pars[, -(1:5)];
 	p = plotChain(pars, parSim = c(vector.std(d$dtfs), c(0, 7), 4));
@@ -411,4 +411,37 @@ if (0) {
 
 if (0) {
 	print(matrixM12(diag(rep(3, 3))))
+}
+
+#
+#	<p> RE model
+#
+
+if (0) {
+	source('GeneticsHaplotype/R/Rdata.R');
+	source('GeneticsHaplotype/R/simulation.R');
+	require('GeneticsHaplotype');
+	# get reconstructions for debuggin
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+	test_reconstruction(d, reconstructions);
+
+	# simulate
+	y = simulatePhenotypesLinearReFam(pedsIdcs(d$peds), d$gts[, 1], c(0, 7), sd = 2, sdRe = 1)[, 1];
+	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
+	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+
+	# chain
+	mcmcLinRe = new('MCMCLinearReFam',
+		y = y, X = X, peds = d$peds, reconstructor = R,
+		Nburnin = 1e3L, Nchain = 1e5L
+	);
+	mcmcLinRe$run();
+}
+if (0) {
+	pars = sapply(mcmcLinRe$chain, unlist)
+	pars1 = pars[, -(1:5)];
+	p1 = plotChain(pars1, parSim = c(vector.std(d$dtfs), c(0, 7), 4, 1));
 }

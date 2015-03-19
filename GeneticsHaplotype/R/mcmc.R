@@ -171,7 +171,8 @@ HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 		Ncum = 'integer',
 		Ifams = 'list',
 		Ifounders = 'integer',
-		IfoundersPerFamily = 'list'
+		IfoundersPerFamily = 'list',
+		IfamsOinv = 'integer'
 	),
 	methods = list(
 	#
@@ -188,6 +189,7 @@ HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 		IfoundersPerFamily <<- pedsFounderIdcs(peds_);
 		Ifounders <<- as.integer(unlist(IfoundersPerFamily));
 		Ifams <<- pedsIdcs(peds);
+		IfamsOinv <<- inverseOrder(unlist(Ifams));
 		#assign('state0', state[Ifounders, ], envir = .GlobalEnv);
 		.self
 	},
@@ -280,7 +282,7 @@ meshLists = function(lolRaw, lolMesh) {
 	idcs = merge.multi.list(list(list(1:nrow(lolMesh)), list(1:ncol(lolMesh))));
 	r = lapply(1:nrow(idcs), function(i) {
 		Iel = lolMesh[idcs[i, 1], idcs[i, 2]];
-		print(lolRaw[[idcs[i, 2]]][[Iel]]);
+#		print(lolRaw[[idcs[i, 2]]][[Iel]]);
 		if (is.na(Iel)) NULL else lolRaw[[idcs[i, 2]]][Iel]
 	});
 	List_(unlist.n(r, 1), rm.null = T);
@@ -334,7 +336,8 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		blockLinB = list(beta = 1);
 		blockLinS = list(sigma = 1);
 		lol = list(blockHts, blockLinB, blockLinS);
-		mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
+		#mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
+		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
 		blocking = meshLists(lol, mesh);
 		callSuper(blocking = blocking, peds = peds, reconstructions = reconstructions, ...);
 
@@ -443,7 +446,7 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 );
 MCMCLinearClass$accessors(names(MCMCLinearClass$fields()));
 
-MCMCLinearReFam = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'HaplotypeHelper'),
+MCMCLinearReFamClass = setRefClass('MCMCLinearReFam', contains = c('MCMCBlock', 'HaplotypeHelper'),
 	fields = list(
 		# Diplotype recontstruction to use
 		reconstructions = 'list',
@@ -480,8 +483,10 @@ MCMCLinearReFam = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
 		blockLinB = list(beta = 1);
 		blockLinS = list(sigma = 1);
-		lol = list(blockHts, blockLinB, blockLinS);
-		mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
+		blockLinRe = list(re = 1);
+		blockLinReS = list(sigmaRe = 1);
+		lol = list(blockHts, blockLinB, blockLinS, blockLinRe, blockLinReS);
+		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
 		blocking = meshLists(lol, mesh);
 		callSuper(blocking = blocking, peds = peds, reconstructions = reconstructions, ...);
 
@@ -493,6 +498,7 @@ MCMCLinearReFam = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		if (is.null(prior$hts)) prior$hts <<- rep(1, 2^Nloci);
 		
 		# initial state (chain)
+		gtScores <<- scoresL$additive;
 		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
 		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
 		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
@@ -510,7 +516,6 @@ MCMCLinearReFam = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		prior$betaVarM12 <<- matrixM12(prior$betaVar);	# use prior parameters <!>
 		prior$betaVarInv <<- solve(prior$betaVar);	# use prior parameters <!>
 		prior$betaMuScaled <<- prior$betaVarInv %*% prior$betaMu;	# use prior parameters <!>
-		gtScores <<- scoresL$additive;
 		.self
 	},
 	getCountMarkers = function()Nloci,
@@ -542,19 +547,20 @@ MCMCLinearReFam = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		print(sprintf('Sigma: %.2f', state$sigma));
 		NULL
 	},
-	update_re = function() {
+	update_re = function(i) {
 		Xg <- cbind(X, gtScores[genotypes() + 1]);
-		res = as.vector(y) - (Xg %*% state$beta + state$re);
+		res = as.vector(y) - (Xg %*% state$beta);
 		# <p> compute posterior distribution
-		sigmas = sapply(1:N, function(i)1/(1/sigma$stateRe + Nfams[i]/state$sigma));
+		sigmas = sapply(1:N, function(i)1/(1/state$sigmaRe + Nfams[i]/state$sigma));
 		means = sapply(1:N, function(i)(sigmas[i] * sum(res[Ifams[[i]]])/state$sigma));
 		# <p> draw realizations of random effect per family
 		reFam = rnorm(N, means, sqrt(sigmas));
 		scoreReNO = unlist(lapply(1:N, function(i)rep(reFam[i], Nfams[i])));
-		state$re <<- scoreReNO[inverseOrder(unlist(Ifams))];
+		state$re <<- scoreReNO[IfamsOinv];
+		NULL
 	},
 	update_sigmaRe = function(i) {
-		gishapeRe = prior$gishapeRe + nrow(Xg)/2;
+		gishapeRe = prior$gishapeRe + length(y)/2;
 		giscaleRe = prior$giscaleRe + (state$re %*% state$re)[1, 1]/2;
 		state$sigmaRe <<- 1/rgamma(1, shape = gishapeRe, scale = 1/as.numeric(giscaleRe));
 		print(sprintf('SigmaRe: %.2f', state$sigmaRe));
@@ -571,8 +577,7 @@ MCMCLinearReFam = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		#N <<- length(peds);
 		#Ncum <<- as.integer(c(0L, cumsum(pedsFamilySizes(peds))) + 1L);
 		iF = (i - 1) %% N + 1;
-		famSel = Ncum[iF]:(Ncum[iF + 1] - 1);
-		# famSel = Ifams[iF];
+		famSel = Ifams[[iF]];
 
 		# haplotype frequencies
 		NhtsI = freqHat(state$hts, iF);
@@ -583,7 +588,7 @@ MCMCLinearReFam = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		Preconstructions = sapply(1:nrow(reconstructions[[iF]]), function(k) {
 			# linear predictor
 			E = cbind(X[famSel, , drop = F], gtScores[reconstructionsGts[[iF]][k, ] + 1]) %*%
-				state$beta + state$re;
+				state$beta + state$re[famSel];
 			# likelihood phenotypes
 			llPts = sum(dnorm(y[famSel], E, sd = state$sigma, log = TRUE));
 			# likelihood haplotyeps
@@ -602,7 +607,7 @@ MCMCLinearReFam = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 	getParameter = function() {
 		#if (any(state[Ifounders, ] - state0 != 0)) print(which(state[Ifounders, ] - state0 != 0));
 		list(htfs = table.n.freq(state$hts[Ifounders, ], min = 0, n = Nhts - 1),
-			beta = state$beta, sigma = state$sigma
+			beta = state$beta, sigma = state$sigma, sigmaRe = state$sigmaRe
 		)
 	}
 

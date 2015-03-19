@@ -162,7 +162,7 @@ simulatePhenotypesLinearReFam = function(pedIdcs, gts, beta, sd = 1, score = 0,
 	reFam = rnorm(length(pedIdcs), 0, sdRe);
 	scoreReNO = unlist(lapply(1:length(pedIdcs), function(i)rep(reFam[i], length(pedIdcs[[i]]))));
 	scoreRe = scoreReNO[inverseOrder(unlist(pedIdcs))];
-	simulatePhenotypesLinearRaw(gts, beta, sd, score + scoreRe, scoreGt, sdRe)$y
+	simulatePhenotypesLinearRaw(gts, beta, sd, score + scoreRe, scoreGt)$y
 }
 
 #
