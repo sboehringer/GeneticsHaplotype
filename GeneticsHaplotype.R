@@ -11,6 +11,7 @@ if (F) {
 }
 
 library('Rcpp');
+require('GeneticsHaplotype');
 source('GeneticsHaplotype/R/mcmc.R');
 source('GeneticsHaplotype/R/pedigree.R');
 source('GeneticsHaplotype/R/simulation.R');
@@ -418,9 +419,6 @@ if (0) {
 #
 
 if (0) {
-	source('GeneticsHaplotype/R/Rdata.R');
-	source('GeneticsHaplotype/R/simulation.R');
-	require('GeneticsHaplotype');
 	# get reconstructions for debuggin
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	reconstructions = R$reconstructionsAll();
@@ -430,8 +428,6 @@ if (0) {
 	y = simulatePhenotypesLinearReFam(pedsIdcs(d$peds), d$gts[, 1], c(0, 7), sd = 2, sdRe = 1)[, 1];
 	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
 	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
-	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
-	reconstructions = R$reconstructionsAll();
 
 	# chain
 	mcmcLinRe = new('MCMCLinearReFam',
@@ -452,7 +448,7 @@ if (0) {
 	print(pedCoeffOfRel(ped));
 }
 # test cases for pedCoeffOfRel
-if (1) {
+if (0) {
 	tests = list(
 		# three generations, stacked trios
 		c(	10, 1, NA, NA,
@@ -484,3 +480,73 @@ if (1) {
 	});
 	print(cors);
 }
+
+if (0) {
+	# Multiple inheritance conclusion: initialize must not expect well defined instance variables
+	#	-> limit initialize to basic initialization
+	#	-> other initialization need to be put into other methods
+AClass = setRefClass('A',
+	fields = list( a = 'integer' ),
+	methods = list(
+	initialize = function(...) {
+		print('called A');
+		callSuper(...);
+		.self
+	}
+	)
+);
+BClass = setRefClass('B',
+	fields = list( b = 'integer' ),
+	methods = list(
+	initialize = function(...) {
+		print('called B');
+		callSuper(...);
+		.self
+	}
+	)
+);
+CClass = setRefClass('C', contains = c('A', 'B'),
+	methods = list(
+	initialize = function(...) {
+		callSuper(...);
+		.self
+	}
+	)
+);
+DClass = setRefClass('D', contains = 'C',
+	methods = list(
+	initialize = function(...) {
+		callSuper(...);
+		.self
+	}
+	)
+);
+	Dinst = new('D', a = 10L, b = 20L);
+}
+
+#
+#	<p> RE model coefficients of relationship
+#
+
+if (1) {
+	# get reconstructions for debuggin
+	if (F) {
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+	test_reconstruction(d, reconstructions);
+	cors = pedsCoeffOfRel(d$peds);
+	}
+
+	# simulate
+	y = simulatePhenotypesLinearReRel(pedsIdcs(d$peds), d$gts[, 1], c(0, 7), sd = 2,
+		sdRe = 1, cors = cors)[, 1];
+	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
+	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
+	# chain
+	mcmcLinReRel = new('MCMCLinearReRel',
+		y = y, X = X, peds = d$peds, reconstructor = R,
+		Nburnin = 1e3L, Nchain = 1e5L, cors = cors
+	);
+	mcmcLinReRel$run();
+}
+

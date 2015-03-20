@@ -165,6 +165,17 @@ simulatePhenotypesLinearReFam = function(pedIdcs, gts, beta, sd = 1, score = 0,
 	simulatePhenotypesLinearRaw(gts, beta, sd, score + scoreRe, scoreGt)$y
 }
 
+simulatePhenotypesLinearReRel = function(pedIdcs, gts, beta, sd = 1, score = 0,
+	scoreGt = scoresL$additive, sdRe = 1, cors) {
+
+	reFam = rnorm(length(pedIdcs), 0, sdRe);
+	scoreReNO = unlist(lapply(1:length(pedIdcs),
+		function(i)mvrnorm(mu = rep(0, nrow(cors[[i]])), Sigma = sdRe * cors[[i]])
+	));
+	scoreRe = scoreReNO[inverseOrder(unlist(pedIdcs))];
+	simulatePhenotypesLinearRaw(gts, beta, sd, score + scoreRe, scoreGt)$y
+}
+
 #
 #	unit tests
 #

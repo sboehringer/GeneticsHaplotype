@@ -39,7 +39,15 @@ MCMCClass = setRefClass('MCMC',
 	sample = function() {
 		chain <<- c(chain, list(getParameter()));
 	},
+	runInitialize = function() {
+		NULL
+	},
+	drawFromPrior = function() {
+		NULL
+	},
 	run = function() {
+		runInitialize();
+		drawFromPrior();
 		N = Nburnin + Nchain;
 		for (i in 1:N) {
 			.self$update(i);
@@ -95,15 +103,21 @@ MCMCBlockClass = setRefClass('MCMCBlock', contains = 'MCMC',
 	#
 	#	<p> methods
 	#
-	initialize = function(..., blocking = list()) {
+	initialize = function(...) {
 		callSuper(...);
-		.blocking <<- blocking;
-		updateMethods <<- as.character(sapply(names(.blocking), function(e)sprintf('update_%s', e)));
-		activateMethods(.self, updateMethods);	# <A> hack
-
 		.self
 	},
+	blocking = function() {
+		stop('abstract methdod: blocking scheme needs to be returned by subclass')
+	},
 	run = function() {
+		runInitialize();
+		drawFromPrior();
+		# cache blocking scheme
+		.blocking <<- blocking();
+		# make sure methods exist
+		updateMethods <<- as.character(sapply(names(.blocking), function(e)sprintf('update_%s', e)));
+		activateMethods(.self, updateMethods);	# <A> hack
 		# number of MCMC cycles
 		Ncycles = Nburnin + Nchain;
 		# cycles to spend in parameter components "blocks"
@@ -448,12 +462,15 @@ MCMCLinearClass$accessors(names(MCMCLinearClass$fields()));
 
 MCMCLinearReFamClass = setRefClass('MCMCLinearReFam', contains = c('MCMCBlock', 'HaplotypeHelper'),
 	fields = list(
+		# Rcpp module to compute reconstructions
+		reconstructor = 'envRefClass',
 		# Diplotype recontstruction to use
 		reconstructions = 'list',
 		# risk genotypes for each reconstruction
 		reconstructionsGts = 'list',
 		peds = 'list',
 		state = 'list',
+		NpedSplit = 'integer',
 		X = 'matrix',	# design matrix
 		y = 'numeric',	# response vector
 		Nloci = 'integer',
@@ -473,38 +490,25 @@ MCMCLinearReFamClass = setRefClass('MCMCLinearReFam', contains = c('MCMCBlock', 
 		#apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 		NULL
 	},
-	initialize = function(peds = NULL, reconstructor = NULL, ..., NpedSplit = 4) {
+	initialize = function(..., NpedSplit = 4L) {
+		callSuper(..., NpedSplit = NpedSplit);
+		.self
+	},
+	runInitialize = function() {
+		callSuper();
 		# determine number of loci, reconstructions
-		reconstructions <<- R$reconstructionsAll();
+		reconstructions <<- reconstructor$reconstructionsAll();
 		Nloci <<- as.integer(log2(max(unlist(reconstructions)) + 1));
-		Npeds = length(peds);
-
-		# determine blocking
-		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
-		blockLinB = list(beta = 1);
-		blockLinS = list(sigma = 1);
-		blockLinRe = list(re = 1);
-		blockLinReS = list(sigmaRe = 1);
-		lol = list(blockHts, blockLinB, blockLinS, blockLinRe, blockLinReS);
-		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
-		blocking = meshLists(lol, mesh);
-		callSuper(blocking = blocking, peds = peds, reconstructions = reconstructions, ...);
 
 		# Haplotype Helper and other initialization
 		initialize_cache();
 		genotypesPrecompute();
-
+		
 		# priors
 		if (is.null(prior$hts)) prior$hts <<- rep(1, 2^Nloci);
 		
 		# initial state (chain)
 		gtScores <<- scoresL$additive;
-		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
-		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
-		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
-		state$sigma <<- 1;	# use prior parameters <!>, sigma is variance <!>
-		state$sigmaRe <<- 1;	# use prior parameters <!>, sigmaRe is variance <!>
-		update_re(0);	# draw realization of re
 		prior$betaMu <<- rep(0, ncol(X) + 1);			# use prior parameters <!>
 		prior$betaVar <<- diag(rep(5, ncol(X) + 1));	# use prior parameters <!>
 		prior$giscale <<- 2;
@@ -516,7 +520,29 @@ MCMCLinearReFamClass = setRefClass('MCMCLinearReFam', contains = c('MCMCBlock', 
 		prior$betaVarM12 <<- matrixM12(prior$betaVar);	# use prior parameters <!>
 		prior$betaVarInv <<- solve(prior$betaVar);	# use prior parameters <!>
 		prior$betaMuScaled <<- prior$betaVarInv %*% prior$betaMu;	# use prior parameters <!>
-		.self
+		NULL
+	},
+	drawFromPrior = function() {
+		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
+		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
+		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
+		state$sigma <<- 1;	# use prior parameters <!>, sigma is variance <!>
+		state$sigmaRe <<- 1;	# use prior parameters <!>, sigmaRe is variance <!>
+		update_re(0);	# draw realization of re
+		NULL
+	},
+	blocking = function() {
+		Npeds = length(peds);
+
+		# determine blocking
+		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
+		blockLinB = list(beta = 1);
+		blockLinS = list(sigma = 1);
+		blockLinRe = list(re = 1);
+		blockLinReS = list(sigmaRe = 1);
+		lol = list(blockHts, blockLinB, blockLinS, blockLinRe, blockLinReS);
+		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
+		blocking = meshLists(lol, mesh);
 	},
 	getCountMarkers = function()Nloci,
 	# by convention we regress on the locus 0, corresponding to index 1 in R
@@ -617,3 +643,48 @@ MCMCLinearReFamClass = setRefClass('MCMCLinearReFam', contains = c('MCMCBlock', 
 	)
 );
 MCMCLinearReFamClass$accessors(names(MCMCLinearReFamClass$fields()));
+
+#
+#	<p> MCMC based on random effect with correlation structure proportional to coefficients of relationship
+#
+
+MCMCLinearReRelClass = setRefClass('MCMCLinearReRel', contains = 'MCMCLinearReFam',
+	fields = list(
+		# coefficients of relationships
+		cors = 'list',
+		# coefficients of relationships, precomputed inverses
+		corsInv = 'list',
+		# coefficients of relationships, precomputed determinants of inverse square
+		corsDetM12 = 'numeric'
+	),
+	methods = list(
+	#
+	#	<p> methods
+	#
+	initialize = function(..., cors = NULL) {
+		callSuper(..., cors = cors);
+		.self
+	},
+	runInitialize = function() {
+		callSuper();
+		corsInv <<- lapply(cors, solve);
+		corsDetM12 <<- sapply(cors, function(cor)det(matrixM12(cor)));
+		NULL
+	},
+	update_re = function(i) {
+		Xg <- cbind(X, gtScores[genotypes() + 1]);
+		res = as.vector(y) - (Xg %*% state$beta);
+		# <p> compute posterior distribution
+		scoreReNO = unlist(lapply(1:N, function(i) {
+			Sigma = solve(corsInv[[i]]/state$sigmaRe + diag(rep(1, Nfams[i])) * Nfams[i]/state$sigma);
+			Mu = as.vector(res[Ifams[[i]]] %*% Sigma)/state$sigma;
+			mvrnorm(mu = Mu, Sigma = Sigma)
+		}));
+		state$re <<- scoreReNO[IfamsOinv];
+		NULL
+	}
+	#	</p> methods
+	#
+	)
+);
+MCMCLinearReRelClass$accessors(names(MCMCLinearReRelClass$fields()));

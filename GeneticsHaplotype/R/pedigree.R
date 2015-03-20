@@ -228,7 +228,6 @@ pedCoeffOfRelNonFounders = function(ped) {
 		# sum(meiosesDists == meiosesDist) count how many minimum paths exist: e.g. sibs, cousins
 		# we assume no loops <!><N>
 		cor = 2^(-min(meiosesDist)) * sum(meiosesDists == meiosesDist);
-		print(c(pair, cor, meiosesDists));
 		c(pair, cor)
 	});
 	Df_(do.call(rbind, cor), names = c('id1', 'id2', 'cor'));
@@ -259,3 +258,4 @@ pedCoeffOfRel = function(ped) {
 	diag(corMat) = 1;
 	corMat
 }
+pedsCoeffOfRel = function(peds)lapply(peds, pedCoeffOfRel)
