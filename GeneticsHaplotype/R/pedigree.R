@@ -2,6 +2,8 @@
 #	pedigree.R
 #Mon Oct  6 13:53:45 2014
 
+library('sets');
+
 #	By definition the unique ids used 
 #
 #
@@ -183,3 +185,76 @@ plotPedigrees = function(ped, tag = '', NfamPerRow = 5) {
 # 	}));
 # 	o
 # }
+
+#
+#	<p> derive coefficients of relationships matrix from ped matrix
+#
+
+pedIdParents = function(id, itrios) with(itrios, {
+	pedParentsFollow = function(id, dist) {
+		if (!(id %in% iid)) return(NULL);
+		idI = which(iid == id);
+		rbind(
+			matrix(c(mid[idI], dist + 1, pid[idI], dist + 1), byrow = T, ncol = 2),
+			pedParentsFollow(mid[idI], dist + 1),
+			pedParentsFollow(pid[idI], dist + 1)
+		)
+	};
+	pedParentsFollow(id, 0)
+})
+# ped is in founders/itrios format
+pedAncestry = function(itrios) {
+	ancestry = nlapply(itrios$iid, pedIdParents, itrios = itrios);
+	ancestry
+}
+
+#
+#	coefficients of relationship between non-founders
+#
+pedCoeffOfRelNonFounders = function(ped) {
+	ancest = pedAncestry(ped$itrios);
+	iids = ped$itrios$iid;
+	cor = lapply(as.list(set_combn(iids, 2))[1], function(pair) {
+		pair = as.integer(as.list(pair));
+		# add pair itself to ancestors as non-founders could be parents of each other
+		anc1 = rbind(ancest[[as.character(pair[1])]], c(pair[1], NA));
+		anc2 = rbind(ancest[[as.character(pair[2])]], c(pair[2], NA));
+		shared = intersect(anc1[, 1], anc2[, 1]);
+		meioses = cbind(
+			anc1[which.indeces(shared, anc1[, 1]), 2],
+			anc2[which.indeces(shared, anc2[, 1]), 2]);
+		meiosesDists = apply(meioses, 1, sum, na.rm = T);
+		meiosesDist = min(meiosesDists);
+		# sum(meiosesDists == meiosesDist) count how many minimum paths exist: e.g. sibs, cousins
+		# we assume no loops <!><N>
+		cor = 2^(-min(meiosesDist)) * sum(meiosesDists == meiosesDist);
+		c(pair, cor)
+	});
+	Df_(do.call(rbind, cor), names = c('id1', 'id2', 'cor'));
+}
+#
+#	coefficients of relationship between founders and non-founders
+#
+pedCoeffOfRelFounderNonFounders = function(ped) {
+	ancest = pedAncestry(ped$itrios);
+	pairs = Df_(merge.multi(ped$founders, ped$itrios$iid), names = c('f', 'nf'));
+	iids = ped$itrios$iid;
+	cor = apply(pairs, 1, function(pair) {
+		ancNf = ancest[[as.character(pair['nf'])]];
+		meiosesDist = ancNf[which(ancNf[, 1] == pair['f']), 2];
+		cor = if (length(meiosesDist) > 0) 2^(-meiosesDist) else 0;
+		c(pair, cor);
+	});
+	Df_(t(cor), names = c('id1', 'id2', 'cor'));
+}
+
+pedCoeffOfRel = function(ped) {
+	corNf = pedCoeffOfRelNonFounders(ped);
+	corFNf = pedCoeffOfRelFounderNonFounders(ped);
+	cor = rbind(corNf, corFNf);
+	corMatRaw = matrixFromIndexedDf(cor, 'id1', 'id2', 'cor', 1:(nrow(ped$itrios) + length(ped$founders)));
+	corMat = symmetrizeMatrix(corMatRaw);
+	corMat[is.na(corMat)] = 0;
+	diag(corMat) = 1;
+	corMat
+}

@@ -256,7 +256,8 @@ FetchRegexpr = function(re, str, ..., ret.all = F, globally = T, captures = F, c
 }
 
 regex = Vectorize(fetchRegexpr, 'str', SIMPLIFY = T, USE.NAMES = T);
-
+Regex = Vectorize(FetchRegexpr, 're', SIMPLIFY = T, USE.NAMES = T);
+regexIdcs = function(re, s, ...)vectorIdcs(regex(re, s, ...), is.null, not = T)
 
 splitString = function(re, str, ..., simplify = T) {
 	l = lapply(str, function(str) {
@@ -309,6 +310,20 @@ mergeDictToDict = function(dMap, dValues, ..., recursive = T) {
 	});
 	r
 }
+
+# quote if needed
+qsSingle = function(s, force = F) {
+	# <N> better implementation possible: detect unquoted white-space
+	if (force || length(fetchRegexpr('[ \t]', s)) > 0) {
+		s = gsub('([\\"])', '\\\\\\1', s);
+		s = sprintf('"%s"', s);
+	} else {
+		s0 = gsub("([\\'])", '\\\\\\1', s);
+		if (s0 != s) s = sprintf("$'%s'", s0);
+	}
+	s
+}
+qs = function(s, ...)sapply(s, qsSingle, ...)
 
 #' Return sub-strings indicated by positions or produce a string by substituting those strings with
 #'	replacements
@@ -377,12 +392,12 @@ Sprintf = sprintd = function(fmt, ..., sprintf_cartesian = FALSE, envir = parent
 		(?:[^%]+|(?:%%)+)*\\K
 		[%]
 			(?:[{]([^{}\\*\'"]*)[}])?
-		((?:[-]?[*\\d]*[.]?[*\\d]*)?(?:[sdfegGD]|))(?=[^sdfegGD]|$)
+		((?:[-]?[*\\d]*[.]?[*\\d]*)?(?:[sdfegGDQ]|))(?=[^sdfegGDQ]|$)
 	)';
 	r = fetchRegexpr(re, fmt, capturesAll = T, returnMatchPositions = T);
 	typesRaw = sapply(r$match, function(m)ifelse(m[2] == '', 's', m[2]));
-	types = ifelse(typesRaw %in% c('D'), 's', typesRaw);
-	fmts = sapply(r$match, function(m)sprintf('%%%s', ifelse(m[2] %in% c('', 'D'), 's', m[2])));
+	types = ifelse(typesRaw %in% c('D', 'Q'), 's', typesRaw);
+	fmts = sapply(r$match, function(m)sprintf('%%%s', ifelse(m[2] %in% c('', 'D', 'Q'), 's', m[2])));
 	fmt1 = Substr(fmt, r$positions, attr(r$positions, 'match.length'), fmts);
 
 	keys = sapply(r$match, function(i)i[1]);
@@ -408,6 +423,11 @@ Sprintf = sprintd = function(fmt, ..., sprintf_cartesian = FALSE, envir = parent
 	keys[keys == ''] = names(dictDf)[Seq(1, sum(nonKeysI != 0))];
 	# due to repeat rules of R vectors might have been converted to factors
 	dictDf = Df_(dictDf, as_character = unique(keys[types == 's']));
+	
+	# <p> conversion <i>: new function
+	colsQ = typesRaw == 'Q';
+	dictDf[, colsQ] = apply(dictDf[, colsQ, drop = F], 2, qs);
+
 	s = sapply(1:nrow(dictDf), function(i) {
 		valueDict = as.list(dictDf[i, , drop = F]);
 # 		sprintfValues = lapply(seq_along(keys), function(i)
@@ -809,16 +829,19 @@ list.key = function(v, key, unlist = T, template = NULL, null2na = F) {
 }
 # extract key path from list, general, recursive version
 #	key path recursive worker
-list.kprw = function(l, keys, unlist.pats, template, null2na, carryNames) {
+list.kprw = function(l, keys, unlist.pats, template, null2na, carryNames, test) {
 	key = keys[1];
 	# <p> extract key
 	r = if (key != "*") {
 		index = fetchRegexpr("\\A\\[\\[(\\d+)\\]\\]\\Z", key, captures = T);
 		if (length(index) > 0) key = as.integer(index[[1]]);
 		if (is.list(l)) {
-			r = if (is.null(l[[key]])) { if (null2na) NA else NULL } else l[[key]];
+			r = if (is.null(l[[key]])) {
+					if (null2na) NA else NULL
+				} else l[[key]];
 			if (length(keys) > 1)
-				list.kprw(r, keys[-1], unlist.pats[-1], template, null2na, carryNames) else r;
+				list.kprw(r, keys[-1], unlist.pats[-1], template, null2na, carryNames, test) else
+				if (test) !(is.null(r) || all(is.na(r))) else r;
 		} else if (class(l) %in% c('character')) {
 			l[names(l) %in% key];
 		} else if (class(l) %in% c('data.frame', 'matrix')) {
@@ -827,7 +850,7 @@ list.kprw = function(l, keys, unlist.pats, template, null2na, carryNames) {
 	} else {
 		if (length(keys) > 1)
 			lapply(l, function(sl)
-				list.kprw(sl, keys[-1], unlist.pats[-1], template, null2na, carryNames)
+				list.kprw(sl, keys[-1], unlist.pats[-1], template, null2na, carryNames, test)
 			) else l;
 	}
 	# <p> unlisting
@@ -839,19 +862,20 @@ list.kprw = function(l, keys, unlist.pats, template, null2na, carryNames) {
 # unlist.pat is pattern of truth values TR1 $ TR2 $..., where TRn is in 'T|F' and specifies unlist actions
 # carryNames determines names to be carried over from the top level in case of unlist
 list.kpr = function(l, keyPath, do.unlist = F, template = NULL,
-	null2na = F, unlist.pat = NULL, carryNames = T, as.matrix = F) {
+	null2na = F, unlist.pat = NULL, carryNames = T, as.matrix = F, test = F) {
 	keys = fetchRegexpr("[^$]+", keyPath);
 	unlist.pats = if (!is.null(unlist.pat)) as.logical(fetchRegexpr("[^$]+", unlist.pat)) else NULL;
 
-	r = list.kprw(l, keys, unlist.pats, template, null2na, carryNames);
+	r = list.kprw(l, keys, unlist.pats, template, null2na, carryNames, test = test);
 	if (do.unlist) { r = unlist(r); }
 	if (as.matrix) r = t(sapply(r, function(e)e));
 	r
 }
 # extract key path from list
 # <!> interface change: unlist -> do.unlist (Wed Sep 29 18:16:05 2010)
-list.kp = function(l, keyPath, do.unlist = F, template = NULL, null2na = F) {
-	r = list.kpr(l, sprintf("*$%s", keyPath), do.unlist = do.unlist, template, null2na);
+# test: test existance instead of returning value
+list.kp = function(l, keyPath, do.unlist = F, template = NULL, null2na = F, test = F) {
+	r = list.kpr(l, sprintf("*$%s", keyPath), do.unlist = do.unlist, template, null2na, test = test);
 	r
 }
 
@@ -1212,6 +1236,11 @@ vector.embed = function(v, idcs, e, idcsResult = T) {
 	r
 }
 
+vectorIdcs = function(v, f, ..., not = F) {
+	r = sapply(v, f, ...);
+	which(if (not) !r else r)
+}
+
 
 # produce indeces for indeces positioned into blocks of blocksize of which count units exists
 # example: expand.block(2, 10, 1:2) == c(1, 2, 11, 12)
@@ -1231,6 +1260,33 @@ search.block = function(l, s) {
 #
 #	<par> matrix functions
 #
+
+# <!> assumes same indeces for rows/columns
+matrixFromIndexedDf = function(df, idx.r = 'idx.r', idx.c = 'idx.c', value = 'value', referenceOrder = NULL) {
+	id = unique(c(df[[idx.r]], df[[idx.c]]));
+	# matrix indeces
+	# <A> canonical order is by repeating vector id for row index, constant for columns within repetition
+	#	-> matrix filled by columns
+	midcs = merge(data.frame(id = id), data.frame(id = id), by = NULL);
+	midcs = data.frame(midcs, mfid.i = 1:nrow(midcs));
+	map = merge(df[, c(idx.r, idx.c, value)], midcs,
+		by.x = c(idx.r, idx.c), by.y = c('id.x', 'id.y'), all.y = T);
+	# return to midcs order
+	map = map[order(map$mfid.i), ];
+	# filled by rows
+	m = matrix(map[[value]], nrow = length(id));
+	# reorder matrix
+	o = order_align(firstDef(referenceOrder, id), id);
+	# reorder in two steps -> out of mem otherwise
+	m1 = m[o, ];
+	m2 = m1[, o];
+	m2
+}
+
+symmetrizeMatrix = function(m) {
+	m[is.na(m)] = t(m)[is.na(m)];
+	m
+}
 
 which.row = function(m, row) {
 	cols = names(as.list(row));
@@ -1358,15 +1414,20 @@ data.frame.types = function(df, numeric = c(), character = c(), factor = c(), in
 # as of 22.7.2013 <!>: min_ applied before names/headerMap
 # as of 19.12.2013 <!>: as.numeric -> as_numeric
 # as of 22.5.2014 <!>: t -> t_
+# as of 13.11.2014 <!>: sapply -> simplify_
 #' Create data frames with more options than \code{data.frame}
 Df_ = function(df0, headerMap = NULL, names = NULL, min_ = NULL,
 	as_numeric = NULL, as_character = NULL, as_factor = NULL,
-	row.names = NA, valueMap = NULL, Df_as_is = TRUE, sapply = FALSE, t_ = FALSE, unlist_cols = F) {
+	row.names = NA, valueMap = NULL, Df_as_is = TRUE, simplify_ = FALSE,
+	deep_simplify_ = FALSE, t_ = FALSE, unlist_cols = F, transf_log = NULL, transf_m1 = NULL) {
 	#r = as.data.frame(df0);
-	if (sapply) df0 = sapply(df0, identity);
 	if (t_) df0 = t(df0);
 	r = data.frame(df0, stringsAsFactors = !Df_as_is);
 	if (!is.null(min_)) r = r[, -which.indeces(min_, names(r)), drop = F];
+	if (simplify_) r = sapply(r, identity);
+	if (deep_simplify_) r = as.data.frame(
+		nlapply(r, function(col)sapply(r[[col]], unlist)), stringsAsFactors = !Df_as_is
+	);
 	if (!is.null(names)) {
 		if (class(names) == 'character') names(r)[1:length(names)] = names;
 		if (class(names) == 'list') names(r) = vector.replace(names(r), names);
@@ -1391,6 +1452,12 @@ Df_ = function(df0, headerMap = NULL, names = NULL, min_ = NULL,
 		#r[, as_factor] = dfn;
 		for (f in as_factor)r[[f]] = as.factor(r[[f]]);
 	}
+	#
+	#	<p> transformations
+	#
+	if (!is.null(transf_log)) r[, transf_log] = log(r[, transf_log, drop = F]);
+	if (!is.null(transf_m1)) r[, transf_m1] = r[, transf_m1, drop = F] - 1;
+
 	if (!all(is.na(row.names))) row.names(r) = row.names;
 	if (unlist_cols) for (n in names(r)) r[[n]] = avu(r[[n]]);
 	r
@@ -1412,8 +1479,14 @@ Df2list = function(df) {
 	df = as.data.frame(df);
 	nlapply(names(df), function(n)df[[n]]);
 }
+Dfselect = function(data, l, na.rm = nif) {
+	sel = apply(sapply(nlapply(l, function(n)data[[n]] == l[[n]]), identity), 1, all);
+	r = data[na.rm(sel), ];
+	r
+}
 
-List_ = .List = function(l, min_ = NULL, rm.null = F, names_ = NULL) {
+
+List_ = .List = function(l, min_ = NULL, rm.null = F, names_ = NULL, null2na = F, simplify_ = F) {
 	if (!is.null(min_)) {
 		i = which.indeces(min_, names(l));
 		if (length(i) > 0) l = l[-i];
@@ -1422,7 +1495,12 @@ List_ = .List = function(l, min_ = NULL, rm.null = F, names_ = NULL) {
 		remove = -which(sapply(l, is.null));
 		if (length(remove) > 0) l = l[remove];
 	}
+	if (null2na) {
+		nullI = which(sapply(l, is.null));
+		l[nullI] = NA;
+	}
 	if (!is.null(names_)) names(l)[Seq(1, length(names_))] = names_;
+	if (simplify_) l = sapply(l, identity);
 	l
 }
 List = function(..., min_ = NULL, envir = parent.frame(), names_ = NULL) {
@@ -1436,17 +1514,34 @@ pop = function(v)(v[-length(v)])
 #	<par> sets and permutations
 #
 
+#' @title wrapper for order to allow multivariate ordering
+Order = function(v, ...) {
+	if (is.data.frame(v)) do.call(order, lapply(v, identity), ...) else
+	if (is.list(v)) do.call(order, v, ...) else
+	order(v, ...)
+}
+
+#' @title Return all value combinations appearing in a data frame
+#'
+#' @examples
+#' combs = valueCombinations(iris);
+valueCombinations = function(d) merge.multi.list(dimnames(table(d)));
+
 #' @title Computes order so that inverseOrder after order is the identity
 #'
 #' @examples
 #' v = runif(1e2);
 #' print(all(sort(v)[inverseOrder(v)] == v))
-inverseOrder = inversePermutation = function(p) {
-# 	o = order(p);
-# 	i = rep(NA, length(o));
-# 	for (j in 1:length(o)) { i[o[j]] = j};
-# 	i
-	which.indeces(1:length(p), order(p))
+Rank = inverseOrder = inversePermutation = function(p) {
+	## <p> naive version
+	# 	o = order(p);
+	# 	i = rep(NA, length(o));
+	# 	for (j in 1:length(o)) { i[o[j]] = j};
+	# 	i
+	## <p> build-in version (not working for multivariate case)
+	#rank(v, ties.method = 'first')
+	## <p> better version
+	which.indeces(1:(if (class(p) == 'data.frame') nrow(p) else length(p)), Order(p))
 }
 
 #' @title Calculates inverseOrder, assuming that the argument is already an \code{order}-vector.
@@ -1459,7 +1554,7 @@ inverseOrder_fromOrder = function(p)which.indeces(1:length(p), p)
 #' @examples
 #' sapply(1:10, function(i){v = sample(1:5); v[order_align(5:1, v)]})
 #' sapply(1:10, function(i){v = runif(1e2); v1 = sample(v, length(v)); all(v1[order_align(v, v1)] == v)})
-order_align = function(reference, v)order(v)[inverseOrder(reference)];
+order_align = function(reference, v)Order(v)[inverseOrder(reference)];
 
 #' Calculates \code{order_align}, assuming that the both arguments are already orders.
 #' sapply(1:40, function(i){v = runif(1e2); v1 = sample(v, length(v)); all(v1[order_align_fromOrder(order(v), order(v1))] == v)})
@@ -1728,7 +1823,7 @@ merge.lists.takenFrom = function(listOfLists, v) {
 # namesOfLists: take the name of the list at the position in v
 #	if null, take first element or leave aggregation to the function aggregator
 # aggregator: called with the final result, should flatten existing lists into characters
-lists.splice = function(listOfLists, v, namesOfLists = F, aggregator = NULL) {
+lists.splice = function(listOfLists, v, namesOfLists = F, aggregator = NULL, null2na = T) {
 	ns = names(listOfLists);
 	l = lapply(1:length(ns), function(i) {
 		name = ns[i];
@@ -1746,6 +1841,7 @@ lists.splice = function(listOfLists, v, namesOfLists = F, aggregator = NULL) {
 		}
 		r
 	});
+	if (null2na) l = lapply(l, function(e)ifelse(is.null(e), NA, e));
 	if (!is.null(aggregator)) l = aggregator(listKeyValue(ns, l), v, l);
 	l
 }
@@ -1757,12 +1853,15 @@ merge.multi.list.symbolic = function(modelList, ..., symbolizer = NULL) {
 	modelSize = lapply(modelList, function(m)1:length(m));
 	models = merge.multi.list(modelSize, ...);
 	namesDf = if (is.null(symbolizer)) names(modelList) else NULL;
-	r = data.frame.types(sapply(1:dim(models)[1], function(i, ...) {
+	df0 = sapply(1:nrow(models), function(i, ...) {
 		r = lists.splice(modelList, unlist(models[i, ]), namesOfLists = T, aggregator = symbolizer);
 		r
-	}), do.transpose = T, names = namesDf);
+	});
+	r = Df_(df0, t_ = T, names = namesDf);
 	r
 }
+
+inlist = function(l)lapply(l, function(e)list(e));
 
 # <!> should be backwards compatible with iterateModels_old, not tested
 # modelList: list of lists/vectors; encapuslate blocks of parameters in another level of lists
@@ -1778,6 +1877,10 @@ merge.multi.list.symbolic = function(modelList, ..., symbolizer = NULL) {
 #' modelList = list(global = list(list(a=1, b=2)), N = c(1, 2, 3));
 #' print(iterateModels(modelList));
 #' modelList = list(N = c(1, 2, 3), parsAsBlock = list(list(list(c = 1, d = 2)), list(list(c = 3, d = 4))));
+#' print(iterateModels(modelList));
+#' # ensure elements on A are given as a block (list)
+#' A = list(list(a = 1, b = 2), list(a = 3, b = 5));
+#' modelList = list(N = inlist(A), parsAsBlock = list(list(list(c = 1, d = 2)), list(list(c = 3, d = 4))));
 #' print(iterateModels(modelList));
 #'
 #'
@@ -2100,7 +2203,9 @@ formula.re = function(formula, data, ignore.case = F, re.string = '.*') {
 	vars = names(data);
 	#regex = '(?:([A-Za-z_.]+[A-Za-z0-9_.]*)[(])?([A-Za-z.]+[%][A-Za-z0-9.%_]*)(?:[)])?';
 	#			function names				(    regex						   )
-	regex = '(?:([A-Za-z_.]+[A-Za-z0-9_.]*)[(])?([A-Za-z%.]+[A-Za-z0-9.%_]*)(?:[)])?';
+	#regex = '(?:([A-Za-z_.]+[A-Za-z0-9_.]*)[(])?([A-Za-z%.]+[A-Za-z0-9.%_]*)(?:[)])?';
+	# allow backslash quoting
+	regex = '(?:([A-Za-z_.\\\\]+[A-Za-z0-9_.\\\\]*)[(])?([A-Za-z%.\\\\]+[A-Za-z0-9.%_\\\\]*)(?:[)])?';
 	patterns = unique(fetchRegexpr(regex, formula, ignore.case = ignore.case));
 	subst = nlapply(patterns, function(p) {
 		comps = fetchRegexpr(regex, p, captureN = c('fct', 'var'), ignore.case = ignore.case)[[1]];
