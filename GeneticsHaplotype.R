@@ -446,8 +446,41 @@ if (0) {
 	p1 = plotChain(pars1, parSim = c(vector.std(d$dtfs), c(0, 7), 4, 1));
 }
 
-if (1) {
+if (0) {
 	ped = peds[[1]];
 	print(pedAncestry(ped$itrios));
 	print(pedCoeffOfRel(ped));
+}
+# test cases for pedCoeffOfRel
+if (1) {
+	tests = list(
+		# three generations, stacked trios
+		c(	10, 1, NA, NA,
+			20, 1, NA, NA,
+			30, 1, 10, 20,
+			40, 1, NA, NA,
+			55, 1, 30, 40),
+		# sibs
+		c(	10, 1, NA, NA,
+			20, 1, NA, NA,
+			30, 1, 10, 20,
+			40, 1, 10, 20,
+			55, 1, 10, 20),
+		# cousins
+		c(	10, 1, NA, NA,
+			11, 1, NA, NA,
+			20, 1, 10, 11,
+			21, 1, NA, NA,
+			22, 1, 10, 11,
+			23, 1, NA, NA,
+			30, 1, 20, 21,
+			31, 1, 22, 23)
+	);
+	cors = lapply(tests[2:3], function(test) {
+		ped = Df(names = c('iid', 'fid', 'mid', 'pid'), matrix(test, byrow = T, ncol = 4));
+		ped2 = pedSplit2ivTrios(ped);
+		print(ped2[[1]]);
+		pedCoeffOfRel(ped2[[1]])
+	});
+	print(cors);
 }

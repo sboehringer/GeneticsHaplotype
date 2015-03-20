@@ -214,7 +214,7 @@ pedAncestry = function(itrios) {
 pedCoeffOfRelNonFounders = function(ped) {
 	ancest = pedAncestry(ped$itrios);
 	iids = ped$itrios$iid;
-	cor = lapply(as.list(set_combn(iids, 2))[1], function(pair) {
+	cor = lapply(as.list(set_combn(iids, 2)), function(pair) {
 		pair = as.integer(as.list(pair));
 		# add pair itself to ancestors as non-founders could be parents of each other
 		anc1 = rbind(ancest[[as.character(pair[1])]], c(pair[1], NA));
@@ -228,6 +228,7 @@ pedCoeffOfRelNonFounders = function(ped) {
 		# sum(meiosesDists == meiosesDist) count how many minimum paths exist: e.g. sibs, cousins
 		# we assume no loops <!><N>
 		cor = 2^(-min(meiosesDist)) * sum(meiosesDists == meiosesDist);
+		print(c(pair, cor, meiosesDists));
 		c(pair, cor)
 	});
 	Df_(do.call(rbind, cor), names = c('id1', 'id2', 'cor'));
