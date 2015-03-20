@@ -676,7 +676,7 @@ MCMCLinearReRelClass = setRefClass('MCMCLinearReRel', contains = 'MCMCLinearReFa
 		res = as.vector(y) - (Xg %*% state$beta);
 		# <p> compute posterior distribution
 		scoreReNO = unlist(lapply(1:N, function(i) {
-			Sigma = solve(corsInv[[i]]/state$sigmaRe + diag(rep(1, Nfams[i])) * Nfams[i]/state$sigma);
+			Sigma = solve(corsInv[[i]]/state$sigmaRe + diag(rep(1, Nfams[i]))/state$sigma);
 			Mu = as.vector(res[Ifams[[i]]] %*% Sigma)/state$sigma;
 			mvrnorm(mu = Mu, Sigma = Sigma)
 		}));
