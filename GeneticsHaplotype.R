@@ -13,6 +13,8 @@ if (F) {
 library('Rcpp');
 require('GeneticsHaplotype');
 source('GeneticsHaplotype/R/mcmc.R');
+source('GeneticsHaplotype/R/mcmcLinear.R');
+source('GeneticsHaplotype/R/mcmcBinomial.R');
 source('GeneticsHaplotype/R/pedigree.R');
 source('GeneticsHaplotype/R/simulation.R');
 source('GeneticsHaplotype/R/Rdata.R');
@@ -528,7 +530,7 @@ DClass = setRefClass('D', contains = 'C',
 #	<p> RE model coefficients of relationship
 #
 
-if (1) {
+if (0) {
 	# get reconstructions for debuggin
 	if (F) {
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
@@ -550,7 +552,7 @@ if (1) {
 	mcmcLinReRel$run();
 }
 
-if (1) {
+if (0) {
 	pars = sapply(mcmcLinReRel$chain, unlist)
 	pars1 = pars[, -(1:5)];
 	p1 = plotChain(pars1, parSim = c(vector.std(d$dtfs), c(0, 7), 4, 1));

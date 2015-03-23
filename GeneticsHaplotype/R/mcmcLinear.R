@@ -18,7 +18,8 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		X = 'matrix',	# design matrix
 		y = 'numeric',	# response vector
 		Nloci = 'integer',
-		gtScores = 'numeric'
+		gtScores = 'numeric',
+		NpedSplit = 'integer'
 	),
 	methods = list(
 	#
@@ -34,31 +35,36 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		#apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 		NULL
 	},
-	initialize = function(peds = NULL, reconstructor = NULL, ..., NpedSplit = 4) {
+	initialize = function(..., NpedSplit = 4) {
+		callSuper(...);
+		.self
+	},
+	runInitialize = function() {
+		callSuper();
 		# determine number of loci, reconstructions
 		reconstructions <<- R$reconstructionsAll();
 		Nloci <<- as.integer(log2(max(unlist(reconstructions)) + 1));
 		Npeds = length(peds);
 
 		# determine blocking
-		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(Npeds, NpedSplit));
+		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(N, NpedSplit));
 		blockLinB = list(beta = 1);
 		blockLinS = list(sigma = 1);
 		lol = list(blockHts, blockLinB, blockLinS);
 		#mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
 		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
 		blocking = meshLists(lol, mesh);
-		callSuper(blocking = blocking, peds = peds, reconstructions = reconstructions, ...);
 
 		# Haplotype Helper and other initialization
 		initialize_cache();
 		genotypesPrecompute();
-
+		
 		# priors
 		if (is.null(prior$hts)) prior$hts <<- rep(1, 2^Nloci);
 		
 		# initial state (chain)
 		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
+		gtScores <<- scoresL$additive;
 		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
 		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
 		state$sigma <<- 1;	# use prior parameters <!>, sigma is variance <!>
@@ -71,8 +77,23 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		prior$betaVarM12 <<- matrixM12(prior$betaVar);	# use prior parameters <!>
 		prior$betaVarInv <<- solve(prior$betaVar);	# use prior parameters <!>
 		prior$betaMuScaled <<- prior$betaVarInv %*% prior$betaMu;	# use prior parameters <!>
-		gtScores <<- scoresL$additive;
-		.self
+		NULL
+	},
+	drawFromPrior = function() {
+		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
+		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
+		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
+		state$sigma <<- 1;	# use prior parameters <!>, sigma is variance <!>
+		NULL
+	},
+	blocking = function() {
+		# determine blocking
+		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(N, NpedSplit));
+		blockLinB = list(beta = 1);
+		blockLinS = list(sigma = 1);
+		lol = list(blockHts, blockLinB, blockLinS);
+		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
+		blocking = meshLists(lol, mesh);
 	},
 	getCountMarkers = function()Nloci,
 	# by convention we regress on the locus 0, corresponding to index 1 in R
