@@ -545,8 +545,14 @@ if (1) {
 	# chain
 	mcmcLinReRel = new('MCMCLinearReRel',
 		y = y, X = X, peds = d$peds, reconstructor = R,
-		Nburnin = 1e3L, Nchain = 1e5L, cors = cors
+		Nburnin = 1e3L, Nchain = 5e5L, cors = cors
 	);
 	mcmcLinReRel$run();
+}
+
+if (1) {
+	pars = sapply(mcmcLinReRel$chain, unlist)
+	pars1 = pars[, -(1:5)];
+	p1 = plotChain(pars1, parSim = c(vector.std(d$dtfs), c(0, 7), 4, 1));
 }
 
