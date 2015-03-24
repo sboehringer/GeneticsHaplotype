@@ -9,6 +9,8 @@
 
 MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'HaplotypeHelper'),
 	fields = list(
+		# Rcpp module to compute reconstructions
+		reconstructor = 'envRefClass',
 		# Diplotype recontstruction to use
 		reconstructions = 'list',
 		# risk genotypes for each reconstruction
@@ -44,16 +46,6 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCBlock', 'Haplotype
 		# determine number of loci, reconstructions
 		reconstructions <<- R$reconstructionsAll();
 		Nloci <<- as.integer(log2(max(unlist(reconstructions)) + 1));
-		Npeds = length(peds);
-
-		# determine blocking
-		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(N, NpedSplit));
-		blockLinB = list(beta = 1);
-		blockLinS = list(sigma = 1);
-		lol = list(blockHts, blockLinB, blockLinS);
-		#mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
-		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
-		blocking = meshLists(lol, mesh);
 
 		# Haplotype Helper and other initialization
 		initialize_cache();

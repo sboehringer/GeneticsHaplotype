@@ -136,7 +136,7 @@ simulatePhenotypesBinRaw = function(gts, beta, score = 0, scoreGt = scoresL$addi
 	d = data.frame(scores = scoreGt[gts + 1]);
 	mm = model.matrix(model.frame(~ scores, d), d);
 	risk = link(mm %*% beta + score);
-	y = as.integer(risk < runif(length(risk)));
+	y = as.integer(risk > runif(length(risk)));
 	list(mm = mm, risk = risk, y = y)
 }
 

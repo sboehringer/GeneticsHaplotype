@@ -558,3 +558,26 @@ if (0) {
 	p1 = plotChain(pars1, parSim = c(vector.std(d$dtfs), c(0, 7), 4, 1));
 }
 
+#
+#	<p> logistic regression
+#
+
+if (1) {
+	# get reconstructions for debuggin
+	if (F) {
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+	}
+
+	# simulate
+	y = simulatePhenotypesBin(d$gts[, 1], c(-2, 3));
+	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
+	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
+	# chain
+	mcmcBin = new('MCMCBinomial',
+		y = y, X = X, peds = d$peds, reconstructor = R,
+		Nburnin = 1e3L, Nchain = 5e5L
+	);
+	mcmcBin$run();
+}
+

@@ -2,12 +2,16 @@
 #	mcmcBionmial.R
 #Mon Mar 23 15:15:40 CET 2015
 
+library('Matrix');
+
 #
-#	<p> MCMC linear
+#	<p> MCMC logistic regression
 #
 
 MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCBlock', 'HaplotypeHelper'),
 	fields = list(
+		# Rcpp module to compute reconstructions
+		reconstructor = 'envRefClass',
 		# Diplotype recontstruction to use
 		reconstructions = 'list',
 		# risk genotypes for each reconstruction
@@ -15,7 +19,7 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCBlock', 'Haplo
 		peds = 'list',
 		state = 'list',
 		X = 'matrix',	# design matrix
-		y = 'numeric',	# response vector
+		y = 'integer',	# response vector
 		Nloci = 'integer',
 		gtScores = 'numeric',
 		NpedSplit = 'integer'
@@ -34,8 +38,8 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCBlock', 'Haplo
 		#apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 		NULL
 	},
-	initialize = function(..., NpedSplit = 4) {
-		callSuper(...);
+	initialize = function(..., NpedSplit = 4L) {
+		callSuper(..., NpedSplit = NpedSplit);
 		.self
 	},
 	runInitialize = function() {
@@ -44,15 +48,6 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCBlock', 'Haplo
 		reconstructions <<- R$reconstructionsAll();
 		Nloci <<- as.integer(log2(max(unlist(reconstructions)) + 1));
 		Npeds = length(peds);
-
-		# determine blocking
-		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(N, NpedSplit));
-		blockLinB = list(beta = 1);
-		blockLinS = list(sigma = 1);
-		lol = list(blockHts, blockLinB, blockLinS);
-		#mesh = matrix(c(1:NpedSplit, rep(1, NpedSplit), rep(1, NpedSplit)), ncol = 3);
-		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
-		blocking = meshLists(lol, mesh);
 
 		# Haplotype Helper and other initialization
 		initialize_cache();
@@ -82,15 +77,17 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCBlock', 'Haplo
 		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
 		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
 		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
-		state$sigma <<- 1;	# use prior parameters <!>, sigma is variance <!>
+		state$scaling <<- rep(1, length(y));	# use prior parameters <!>
+		state$liability <<- rep(0, length(y));	# use prior parameters <!>
 		NULL
 	},
 	blocking = function() {
 		# determine blocking
 		blockHts = listKeyValue(rep('hts', NpedSplit), splitN(N, NpedSplit));
-		blockLinB = list(beta = 1);
-		blockLinS = list(sigma = 1);
-		lol = list(blockHts, blockLinB, blockLinS);
+		blockBinB = list(beta = 1);
+		blockBinLiab = list(liability = 1);
+		blockBinScal = list(scaling = 1);
+		lol = list(blockHts, blockBinB, blockBinLiab, blockBinScal);
 		mesh = cbind(1:NpedSplit, matrix(1, ncol = length(lol) - 1, nrow = NpedSplit));
 		blocking = meshLists(lol, mesh);
 	},
@@ -105,22 +102,16 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCBlock', 'Haplo
 	update_beta = function(i) {
 		# build design matrix
 		Xg <- cbind(X, gtScores[genotypes() + 1]);
+		W = Diagonal(x = state$scaling);
+		# scaled X
+		Xs = t(Xg) %*% W;
 		# compute posterior distribution (mean, cov-mat of MVN)
-		S1inv = prior$betaVarInv + t(Xg) %*% Xg / state$sigma;
+		S1inv = (prior$betaVarInv + Xs %*% Xg);
 		S1 = solve(S1inv);
-		mu = S1 %*% ((prior$betaMuScaled + t(Xg) %*% y) / state$sigma);
+		mu = S1 %*% (prior$betaMuScaled + Xs %*% state$liability);
 		# draw new state
-		state$beta <<- mvrnorm(1, mu, S1);
+		state$beta <<- mvrnorm(1, mu, S1)[, 1];
 		print(sprintf('Beta: %.2f', state$beta))
-		NULL
-	},
-	update_sigma = function(i) {
-		Xg <- cbind(X, gtScores[genotypes() + 1]);
-		res = as.vector(y) - Xg %*% state$beta;
-		gishape = prior$gishape + nrow(Xg)/2;
-		giscale = prior$giscale + (t(res) %*% res)/2;
-		state$sigma <<- 1/rgamma(1, shape = gishape, scale = 1/as.numeric(giscale));
-		print(sprintf('Sigma: %.2f', state$sigma));
 		NULL
 	},
 	#
@@ -147,7 +138,8 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCBlock', 'Haplo
 			E = cbind(X[famSel, , drop = F], gtScores[reconstructionsGts[[iF]][k, ] + 1]) %*%
 				state$beta;
 			# likelihood phenotypes
-			llPts = sum(dnorm(y[famSel], E, sd = state$sigma, log = TRUE));
+			p = expit(E);
+			llPts = sum(log(ifelse(y[famSel], p, 1 - p)));
 			# likelihood haplotyeps
 			logFactor = reconstructions[[iF]][k, 1] * log(2);
 			htsFounders = matrix(reconstructions[[iF]][k, -1], byrow = T, nrow = 2)[, Ifdrs, drop = F];
@@ -161,10 +153,30 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCBlock', 'Haplo
 		state$hts[Ifams[[iF]], ] <<- htsI;
 		NULL
 	},
+	# latent liability
+	update_liability = function(i) {
+		lpred = cbind(X, gtScores[genotypes() + 1]) %*% state$beta;
+		liab = rnorm(length(lpred), lpred, 1/state$scaling);
+		# truncate normal according to outcome
+		#liab = ifelse(y == 1, abs(liab), -abs(liab));
+		liab = ifelse(y == 1, ifelse(liab > 0, liab, 0), ifelse(liab < 0, liab, 0));
+stem(liab);
+		state$liability <<- liab;
+		NULL
+	},
+	update_scaling = function(i) {
+		nu = 7.3;	# t-distribution based approximation of the logistic (Kinney & Dunson 2006)
+		lpred = cbind(X, gtScores[genotypes() + 1]) %*% state$beta;
+		shape = (nu + 1)/2;
+		scale = 2/(nu + (state$liability - lpred)^2);
+		state$scaling <<- rgamma(length(lpred), shape, scale = scale);
+		#stem(state$scaling);
+		NULL
+	},
 	getParameter = function() {
 		#if (any(state[Ifounders, ] - state0 != 0)) print(which(state[Ifounders, ] - state0 != 0));
 		list(htfs = table.n.freq(state$hts[Ifounders, ], min = 0, n = Nhts - 1),
-			beta = state$beta, sigma = state$sigma
+			beta = state$beta
 		)
 	}
 
