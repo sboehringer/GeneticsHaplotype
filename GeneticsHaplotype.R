@@ -3,6 +3,7 @@
 #Wed Sep  3 18:18:06 CEST 2014
 
 library('devtools');
+source('~/.Rprofile');
 
 if (F) {
 	system('rm GeneticsHaplotype/src/*.o GeneticsHaplotype/src/*.so');
@@ -12,12 +13,13 @@ if (F) {
 
 library('Rcpp');
 require('GeneticsHaplotype');
+source('GeneticsHaplotype/R/Rdata.R');
 source('GeneticsHaplotype/R/mcmc.R');
+source('GeneticsHaplotype/R/mcmcRegression.R');
 source('GeneticsHaplotype/R/mcmcLinear.R');
 source('GeneticsHaplotype/R/mcmcBinomial.R');
 source('GeneticsHaplotype/R/pedigree.R');
 source('GeneticsHaplotype/R/simulation.R');
-source('GeneticsHaplotype/R/Rdata.R');
 
 if (F) {
 	library('GeneticsHaplotype');
@@ -570,7 +572,7 @@ if (1) {
 	}
 
 	# simulate
-	y = simulatePhenotypesBin(d$gts[, 1], c(-2, 3));
+	y = simulatePhenotypesBin(d$gts[, 1], c(-2, 5));
 	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
 	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
 	# chain
@@ -581,3 +583,24 @@ if (1) {
 	mcmcBin$run();
 }
 
+qqDist = function(Nqts = 1e2, qdist, ...) {
+	qtls = (1:Nqtls)/(Nqtls + 1);
+	qtlsExp = qdist(qtls, ...);
+	qtlsObs = quantile(rtn, qtls);
+	qq = qplot(qtlsExp, qtlsObs) + theme_bw();
+	qq
+}
+
+qqSim = function(Nsim, dist = 'truncnorm', Nqts = Nsim/10, ...) {
+	rdist = get(Sprintf('r%{dist}s'));
+	r = rdist(Nsim, ...);
+	qdist = get(Sprintf('q%{dist}s'));
+	qq = qqDist(Nqts, qdist, ...);
+	qq
+}
+
+if (0) {
+	#rtn = rtruncnorm(1e4, 0, 1, 0, 1);
+	#qqRtn = qqDist(1e3, qtruncnorm, mean = 0, sd = 1, lower = 0, upper = 1);
+	qqRtn = qqSim(1e4, 'truncnorm', mean = 0, sd = 1, lower = 0, upper = 1);
+}

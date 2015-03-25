@@ -137,6 +137,7 @@ simulatePhenotypesBinRaw = function(gts, beta, score = 0, scoreGt = scoresL$addi
 	mm = model.matrix(model.frame(~ scores, d), d);
 	risk = link(mm %*% beta + score);
 	y = as.integer(risk > runif(length(risk)));
+	#qplot(risk, y, position = position_jitter(w = 0.01, h = 0.1), alpha = .1) + theme_bw()
 	list(mm = mm, risk = risk, y = y)
 }
 
