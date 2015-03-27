@@ -564,7 +564,7 @@ if (0) {
 #	<p> logistic regression
 #
 
-if (1) {
+if (0) {
 	# get reconstructions for debuggin
 	if (F) {
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
@@ -572,7 +572,7 @@ if (1) {
 	}
 
 	# simulate
-	y = simulatePhenotypesBin(d$gts[, 1], c(-2, 5));
+	y = simulatePhenotypesBin(d$gts[, 1], c(-.5, .5));
 	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
 	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
 	# chain
@@ -604,3 +604,46 @@ if (0) {
 	#qqRtn = qqDist(1e3, qtruncnorm, mean = 0, sd = 1, lower = 0, upper = 1);
 	qqRtn = qqSim(1e4, 'truncnorm', mean = 0, sd = 1, lower = 0, upper = 1);
 }
+
+#
+#	<p> probit regression
+#
+
+if (0) {
+	# get reconstructions for debuggin
+	if (F) {
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+	}
+
+	# simulate
+	y = simulatePhenotypesBin(d$gts[, 1], c(-1, 1), link = pnorm);
+	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
+	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
+	# chain
+	mcmcBinProbit = new('MCMCBinProbit',
+		y = y, X = X, peds = d$peds, reconstructor = R,
+		Nburnin = 1e3L, Nchain = 5e5L
+	);
+	mcmcBinProbit$run();
+}
+
+if (1) {
+	# get reconstructions for debuggin
+	if (F) {
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+	}
+
+	# simulate
+	y = simulatePhenotypesBinReFam(pedsIdcs(d$peds), d$gts[, 1], c(-1, 1), sdRe = 2, link = pnorm);
+	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
+	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
+	# chain
+	mcmcBinProbitReFam = new('MCMCBinProbitReFam',
+		y = y, X = X, peds = d$peds, reconstructor = R,
+		Nburnin = 1e3L, Nchain = 5e5L
+	);
+	mcmcBinProbitReFam$run();
+}
+
