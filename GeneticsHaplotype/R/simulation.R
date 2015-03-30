@@ -113,6 +113,15 @@ simulationsFromPed = function(ped, hfs, NsimPped, Nsim, module) {
 }
 
 #
+#	<p> missingness
+#
+
+createMissing = function(d, missing = .05) {
+	d$gts[runif(length(d$gts)) < missing] = NA;
+	d
+}
+
+#
 #	<p> phenotype helpers
 #
 
@@ -146,10 +155,19 @@ simulatePhenotypesBin = function(gts, beta, score = 0, scoreGt = scoresL$additiv
 }
 
 simulatePhenotypesBinReFam = function(pedIdcs, gts, beta, score = 0,
-	scoreGt = scoresL$additive, sdRe = 1, link = plogis) {
+	scoreGt = scoresL$additive, sdRe = 1, link) {
 
 	reFam = rnorm(length(pedIdcs), 0, sdRe);
 	scoreReNO = unlist(lapply(1:length(pedIdcs), function(i)rep(reFam[i], length(pedIdcs[[i]]))));
+	scoreRe = scoreReNO[inverseOrder(unlist(pedIdcs))];
+	simulatePhenotypesBinRaw(gts, beta, score + scoreRe, scoreGt = scoreGt, link = link)$y
+}
+simulatePhenotypesBinReRel = function(pedIdcs, gts, beta, score = 0,
+	scoreGt = scoresL$additive, sdRe = 1, link = plogis, cors) {
+
+	scoreReNO = unlist(lapply(1:length(pedIdcs),
+		function(i)mvrnorm(mu = rep(0, nrow(cors[[i]])), Sigma = sdRe^2 * cors[[i]])
+	));
 	scoreRe = scoreReNO[inverseOrder(unlist(pedIdcs))];
 	simulatePhenotypesBinRaw(gts, beta, score + scoreRe, scoreGt = scoreGt, link = link)$y
 }
@@ -180,7 +198,7 @@ simulatePhenotypesLinearReRel = function(pedIdcs, gts, beta, sd = 1, score = 0,
 
 	reFam = rnorm(length(pedIdcs), 0, sdRe);
 	scoreReNO = unlist(lapply(1:length(pedIdcs),
-		function(i)mvrnorm(mu = rep(0, nrow(cors[[i]])), Sigma = sdRe * cors[[i]])
+		function(i)mvrnorm(mu = rep(0, nrow(cors[[i]])), Sigma = sdRe^2 * cors[[i]])
 	));
 	scoreRe = scoreReNO[inverseOrder(unlist(pedIdcs))];
 	simulatePhenotypesLinearRaw(gts, beta, sd, score + scoreRe, scoreGt)$y

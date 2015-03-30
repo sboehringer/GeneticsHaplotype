@@ -309,3 +309,49 @@ MCMCBinProbitReFamClass = setRefClass('MCMCBinProbitReFam', contains = c('MCMCRe
 	)
 );
 MCMCBinProbitReFamClass$accessors(names(MCMCBinProbitReFamClass$fields()));
+
+#
+#	<p> MCMC based on random effect with correlation structure proportional to coefficients of relationship
+#		copied from MCMCLinearReRelClass
+#
+
+MCMCBinProbitReRelClass = setRefClass('MCMCBinProbitReRel', contains = 'MCMCBinProbitReFam',
+	fields = list(
+		# coefficients of relationships
+		cors = 'list',
+		# coefficients of relationships, precomputed inverses
+		corsInv = 'list',
+		# coefficients of relationships, precomputed determinants of inverse square
+		corsDetM12 = 'numeric'
+	),
+	methods = list(
+	#
+	#	<p> methods
+	#
+	initialize = function(..., cors = NULL) {
+		callSuper(..., cors = cors);
+		.self
+	},
+	runInitialize = function() {
+		callSuper();
+		corsInv <<- lapply(cors, solve);
+		corsDetM12 <<- sapply(cors, function(cor)det(matrixM12(cor)));
+		NULL
+	},
+	update_re = function(i) {
+		lpred = cbind(X, gtScores[genotypes() + 1]) %*% state$beta;
+		res = state$liability - lpred;
+		# <p> compute posterior distribution
+		scoreReNO = unlist(lapply(1:N, function(i) {
+			Sigma = solve(corsInv[[i]]/state$sigmaRe + diag(rep(1, Nfams[i])));
+			Mu = as.vector(res[Ifams[[i]]] %*% Sigma);
+			mvrnorm(mu = Mu, Sigma = Sigma)
+		}));
+		state$re <<- scoreReNO[IfamsOinv];
+		NULL
+	}
+	#	</p> methods
+	#
+	)
+);
+MCMCBinProbitReRelClass$accessors(names(MCMCBinProbitReRelClass$fields()));

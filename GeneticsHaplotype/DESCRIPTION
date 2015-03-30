@@ -10,3 +10,13 @@ License: LGPL 2.0
 Imports: methods, Rcpp (>= 0.11.1)
 LinkingTo: Rcpp
 RcppModules: Reconstructor
+Collate:
+	zzz.R
+	Rdata.R
+	RcppExports.R
+	pedigree.R
+	simulation.R
+	mcmc.R
+	mcmcRegression.R
+	mcmcLinear.R
+	mcmcBinomial.R

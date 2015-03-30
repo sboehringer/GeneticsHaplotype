@@ -354,9 +354,6 @@ if (0) {
 }
 
 if (0) {
-	source('GeneticsHaplotype/R/Rdata.R');
-	source('GeneticsHaplotype/R/simulation.R');
-	require('GeneticsHaplotype');
 	# get reconstructions for debuggin
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	reconstructions = R$reconstructionsAll();
@@ -628,7 +625,7 @@ if (0) {
 	mcmcBinProbit$run();
 }
 
-if (1) {
+if (0) {
 	# get reconstructions for debuggin
 	if (F) {
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
@@ -647,3 +644,47 @@ if (1) {
 	mcmcBinProbitReFam$run();
 }
 
+if (0) {
+	# get reconstructions for debuggin
+	if (T) {
+	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
+	reconstructions = R$reconstructionsAll();
+	cors = pedsCoeffOfRel(d$peds);
+	}
+
+	# simulate
+	y = simulatePhenotypesBinReRel(pedsIdcs(d$peds), d$gts[, 1], c(-1, 1), sdRe = 1,
+		link = pnorm, cors = cors);
+	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
+	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
+	# chain
+	mcmcBinProbitReRel = new('MCMCBinProbitReRel',
+		y = y, X = X, peds = d$peds, reconstructor = R,
+		Nburnin = 1e3L, Nchain = 5e5L, cors = cors
+	);
+	mcmcBinProbitReRel$run();
+}
+
+#
+#	<p> missing data
+#
+
+if (1) {
+	if (T) {
+	dMissing = createMissing(d, missing = .2);
+	R = new(DiplotypeReconstructor, dMissing$gts, pedsItrios2rcpp(d$peds));
+	}
+	#test_reconstruction(dMissing, reconstructions);
+
+	# simulate
+	y = simulatePhenotypesLinear(d$gts[, 1], c(0, 7), sd = 2)[, 1];
+	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
+	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
+	R = new(DiplotypeReconstructor, dMissing$gts, pedsItrios2rcpp(dMissing$peds));
+	reconstructions = R$reconstructionsAll();
+
+	# chain
+	mcmcLin = new('MCMCLinear', y = y, X = X, peds = dMissing$peds, reconstructor = R,
+		Nburnin = 1e3L, Nchain = 1e5L);
+	mcmcLin$run();
+}

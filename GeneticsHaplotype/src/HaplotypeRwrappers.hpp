@@ -37,7 +37,8 @@ public:
 		return m.ncol();
 	}
 	virtual	genotype_t	genotype(iid_t id, marker_t marker) const {
-		return (genotype_t)m(id, marker);
+		genotype_t	gt = (genotype_t)m(id, marker);
+		return gt < 0? genotype_NA: gt;
 	}
 	virtual iid_t		N(void) const {
 		return m.nrow();
