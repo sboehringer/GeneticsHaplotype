@@ -72,6 +72,9 @@ pedsItrios2rcpp = function(peds) {
 
 # sex: 0: female, 1: male, assume normalized id 1:N
 ivTriosInferSex = function(ped) {
+	if (nrow(ped$itrios) == 0) {
+		return(cbind(ped$founders, NA));
+	}
 	N = length(ped$founders) + nrow(ped$itrios);
 	mapping = apply(ped$itrios, 1, function(r) with(as.list(r), c(mid, 0, pid, 1)));
 	mapping = matrix(as.vector(mapping), byrow = T, ncol = 2);
@@ -79,7 +82,7 @@ ivTriosInferSex = function(ped) {
 	mapping = unique(rbind(mapping, as.matrix(data.frame(iid = setdiff(1:N, mapping[, 1]), sex = NA))));
 	if (nrow(mapping) != N) {
 		print(mapping);
-		stop(Sprintf('Sex mapping inconsistent in pedigree.'));
+		stop(sprintf('Sex mapping inconsistent in pedigree.'));
 	}
 	sex = mapping[order(mapping[, 'iid']), 'sex'];
 	sex
@@ -101,6 +104,9 @@ pedForwardOrder = function(ped) {
 
 pedInferSex = function(ped) {
 	peds = pedSplit2ivTrios(ped);
+	for (p in peds) {
+		if (any(is.na(p$itrios[, c('mid', 'pid')]))) browser();
+	}
 	sexes = unlist(lapply(peds, ivTriosInferSex));
 	sexes[pedInverseOrder(ped)]
 }
@@ -135,13 +141,13 @@ pedsIdcs = function(peds) {
 	r
 }
 
-plotPedigree = plotPedigree_kinship2 = function(ped, tag = '') {
+plotPedigree = plotPedigree_kinship2 = function(ped, tag = '', sex = NULL) {
 	pedu = ped2uniqueId(ped);
 	require('kinship2');
 	# <p> infer and recode sex
-	sexu = pedInferSex(pedu);
+	sexu = if (is.null(sex)) pedInferSex(pedu) else sex;
 	sex = 2 - sexu;	# recode
-	sex[is.na(sex)] = 3;			# 3 value for missing
+	sex[is.na(sex)] = 3;	# 3 value for missing
 	# <p> plot using function pedigree
 	pedPlot = with(pedu, pedigree(iid, pid, mid, sex, affected = rep(0, nrow(pedu))));
 	par(xpd = T);
@@ -155,7 +161,7 @@ plotPedigree_gap = function(ped) {
 }
 
 # NfamPerRow: #families per row / #rows
-plotPedigrees = function(ped, tag = '', NfamPerRow = 5) {
+plotPedigrees = function(ped, tag = '', NfamPerRow = 5, sex = NULL) {
 	o = order(ped$fid);
 	# re-order ped by families
 	ped = ped[o, ];
@@ -171,7 +177,7 @@ plotPedigrees = function(ped, tag = '', NfamPerRow = 5) {
 	apply(idcs, 1, function(i) {
 		fidI = fids[i[1]:i[2]];
 		pedI = which(ped$fid %in% fidI);
-		plotPedigree(ped[pedI, ], tag[pedI]);
+		plotPedigree(ped[pedI, ], tag[pedI], sex[pedI]);
 		NULL
 	});
 }
