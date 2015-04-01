@@ -20,3 +20,4 @@ Collate:
 	mcmcRegression.R
 	mcmcLinear.R
 	mcmcBinomial.R
+	dataAnalysis.R

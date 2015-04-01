@@ -272,7 +272,7 @@ MCMCBinProbitReFamClass = setRefClass('MCMCBinProbitReFam', contains = c('MCMCRe
 	},
 	llOutcome = function(i, yFam, lpredFam, famSel) {
 		p = pnorm(lpredFam);
-		ll = log(ifelse(yFam, p, 1 - p));
+		ll = as.numeric(na.omit(log(ifelse(yFam, p, 1 - p))));
 		ll
 	},
 	# latent liability

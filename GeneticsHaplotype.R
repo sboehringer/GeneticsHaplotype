@@ -626,7 +626,7 @@ if (0) {
 }
 
 if (0) {
-	# get reconstructions for debuggin
+	# get reconstructions for debugging
 	if (F) {
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	reconstructions = R$reconstructionsAll();
@@ -645,7 +645,7 @@ if (0) {
 }
 
 if (0) {
-	# get reconstructions for debuggin
+	# get reconstructions for debugging
 	if (T) {
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	reconstructions = R$reconstructionsAll();

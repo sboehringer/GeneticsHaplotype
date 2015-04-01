@@ -220,6 +220,7 @@ pedAncestry = function(itrios) {
 pedCoeffOfRelNonFounders = function(ped) {
 	ancest = pedAncestry(ped$itrios);
 	iids = ped$itrios$iid;
+	if (length(iids) == 1) return(Df_(as.data.frame(t(rep(0, 3))), names = c('id1', 'id2', 'cor'))[-1, ]);
 	cor = lapply(as.list(set_combn(iids, 2)), function(pair) {
 		pair = as.integer(as.list(pair));
 		# add pair itself to ancestors as non-founders could be parents of each other
@@ -255,6 +256,7 @@ pedCoeffOfRelFounderNonFounders = function(ped) {
 }
 
 pedCoeffOfRel = function(ped) {
+	if (length(ped$founders) == 1) return(matrix(1, nrow = 1, ncol = 1));
 	corNf = pedCoeffOfRelNonFounders(ped);
 	corFNf = pedCoeffOfRelFounderNonFounders(ped);
 	cor = rbind(corNf, corFNf);
