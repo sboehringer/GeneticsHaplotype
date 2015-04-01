@@ -69,7 +69,6 @@ MCMCimputationClass = setRefClass('MCMCimputation', contains = c('MCMC', 'Haplot
 		updateImputation();
 	},
 	updateImputation = function() {
-		# first update
 		dfg = data.frame(g = as.factor(genotypes()));
 		gmat = model.matrix(model.frame(~ 0 + g, dfg), dfg);
 		Isample = length(chain);

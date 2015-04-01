@@ -53,6 +53,17 @@ MCMCClass = setRefClass('MCMC',
 			.self$update(i);
 			if (i > Nburnin && ((i - Nburnin - 1) %% NsampleSpacing) == 0) .self$sample();
 		}
+	},
+	summary = function(names = NULL, credibleAlpha = .05) {
+		pars = do.call(rbind, lapply(chain, unlist));
+		summaries = apply(pars, 2, function(par) {
+			list(
+				mean = mean(par), median = median(par), sd = sd(par),
+				credible = quantile(pars[, 1], probs = c(credibleAlpha, 1 - credibleAlpha))
+			)
+		});
+		if (!is.null(names)) names(summaries) = paste(names, 1:(length(summaries)/length(names)), sep = '');
+		summaries
 	}
 	#
 	#	</p> methods
@@ -215,6 +226,11 @@ HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 	freqHat = function(state, j) {
 		htfs = table.n(state[setdiff(Ifounders, IfoundersPerFamily[[j]]), ], min = 0, n = Nhts - 1);
 		htfs
+	},
+	R2 = function(gtsReal) {
+		dosage = imputation %*% 0:2;
+		R2 = (cor(gtsReal, dosage, use = 'pairwise.complete.obs')^2)[1, 1];
+		R2
 	}
 	#
 	#	</p> methods

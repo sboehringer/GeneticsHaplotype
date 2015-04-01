@@ -707,7 +707,7 @@ if (0) {
 	corSNPs = cor(d$gts);
 }
 
-if (1) {
+if (0) {
 	dMissIndep = createIndependent(dMissing);
 	R = new(DiplotypeReconstructor, dMissIndep$gts, pedsItrios2rcpp(dMissIndep$peds));
 	reconstructions = R$reconstructionsAll();
@@ -718,4 +718,11 @@ if (1) {
 	dosage = mcmcImp$imputation %*% 0:2;
 	R2 = (cor(d$gts[, 1], dosage)^2)[1, 1];
 	corSNPs = cor(d$gts);
+}
+if (1) {
+	R = new(DiplotypeReconstructor, dMissing$gts, pedsItrios2rcpp(dMissing$peds));
+
+	# chain
+	mcmcImp = new('MCMCimputation', peds = d$peds, reconstructor = R, Nburnin = 1e3L, Nchain = 1e4L);
+	mcmcImp$run();
 }
