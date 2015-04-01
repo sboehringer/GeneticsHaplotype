@@ -18,6 +18,7 @@ Collate:
 	simulation.R
 	mcmc.R
 	mcmcRegression.R
+	mcmcImputation.R
 	mcmcLinear.R
 	mcmcBinomial.R
 	dataAnalysis.R

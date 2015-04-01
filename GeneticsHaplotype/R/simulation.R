@@ -121,6 +121,16 @@ createMissing = function(d, missing = .05) {
 	d
 }
 
+# create mis-specified family structure
+createIndependent = function(d) {
+	pedIndep = data.frame(fid = 1:nrow(d$ped), iid = 1:nrow(d$ped), mid = NA, pid = NA);
+	pedsIndep = lapply(1:nrow(d$ped), function(i) {
+		list(founders = 1, itrios = data.frame(iid = 0, mid = 0, pid = 0)[-1, ]);
+	});
+	r = merge.lists(d, list(ped = pedIndep, peds = pedsIndep));
+	r
+}
+
 #
 #	<p> phenotype helpers
 #

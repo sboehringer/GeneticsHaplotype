@@ -17,7 +17,8 @@ MCMCRegressionClass = setRefClass('MCMCRegression', contains = c('MCMCBlock', 'H
 		state = 'list',
 		Nloci = 'integer',
 		gtScores = 'numeric',
-		NpedSplit = 'integer'
+		NpedSplit = 'integer',
+		imputation = 'matrix'
 	),
 	methods = list(
 	#
@@ -25,10 +26,13 @@ MCMCRegressionClass = setRefClass('MCMCRegression', contains = c('MCMCBlock', 'H
 	#
 	# precompute genotypes for all reconstructions -> haplotype drawing
 	genotypesPrecompute = function() {
+		# genotypes per column, reconstructions per row
 		reconstructionsGts <<- lapply(reconstructions, function(m) {
 			# alleles
-			as = apply(m[, -1, drop = F], c(1, 2), function(e)e%%2);
-			t(apply(as, 1, function(r)apply(matrix(r, byrow = T, ncol = 2), 1, sum)))
+			alleles = apply(m[, -1, drop = F], c(1, 2), function(e)e%%2);
+			gtsRaw = apply(alleles, 1, function(r)apply(matrix(r, byrow = T, ncol = 2), 1, sum));
+			gts = if (ncol(alleles)/2 == 1) matrix(gtsRaw) else t(gtsRaw);
+			gts
 		});
 		#apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
 		NULL
@@ -116,6 +120,18 @@ MCMCRegressionClass = setRefClass('MCMCRegression', contains = c('MCMCBlock', 'H
 		list(htfs = table.n.freq(state$hts[Ifounders, ], min = 0, n = Nhts - 1),
 			beta = state$beta
 		)
+	},
+	sample = function() {
+		callSuper();
+		updateImputation();
+	},
+	updateImputation = function() {
+		# first update
+		dfg = data.frame(g = as.factor(genotypes()));
+		gmat = model.matrix(model.frame(~ 0 + g, dfg), dfg);
+		Isample = length(chain);
+		imputation <<- if (Isample == 1) gmat else ((gmat + (Isample - 1)*imputation)/Isample);
+		NULL
 	}
 
 	#

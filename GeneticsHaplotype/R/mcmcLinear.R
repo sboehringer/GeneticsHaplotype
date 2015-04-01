@@ -27,16 +27,6 @@ MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCRegression'),
 	#
 	#	<p> methods
 	#
-	# precompute genotypes for all reconstructions -> haplotype drawing
-	genotypesPrecompute = function() {
-		reconstructionsGts <<- lapply(reconstructions, function(m) {
-			# alleles
-			as = apply(m[, -1, drop = F], c(1, 2), function(e)e%%2);
-			t(apply(as, 1, function(r)apply(matrix(r, byrow = T, ncol = 2), 1, sum)))
-		});
-		#apply(state$hts, 1, function(hts)(hts[1] %% 2 + hts[2] %% 2))
-		NULL
-	},
 	initialize = function(..., NpedSplit = 4L) {
 		callSuper(..., NpedSplit = NpedSplit);
 		.self

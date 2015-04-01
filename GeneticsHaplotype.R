@@ -15,6 +15,7 @@ library('Rcpp');
 require('GeneticsHaplotype');
 source('GeneticsHaplotype/R/Rdata.R');
 source('GeneticsHaplotype/R/mcmc.R');
+source('GeneticsHaplotype/R/mcmcImputation.R');
 source('GeneticsHaplotype/R/mcmcRegression.R');
 source('GeneticsHaplotype/R/mcmcLinear.R');
 source('GeneticsHaplotype/R/mcmcBinomial.R');
@@ -41,7 +42,7 @@ if ( T) {
 }
 if (F) {
 	hfs = rev(vector.std(1:8));
-	N = 5e2;
+	N = 2e2;
 	d = simulateFromTemplate(pedTemplate, N = N, hfs = hfs);
 }
 
@@ -669,7 +670,7 @@ if (0) {
 #	<p> missing data
 #
 
-if (1) {
+if (0) {
 	if (T) {
 	dMissing = createMissing(d, missing = .2);
 	R = new(DiplotypeReconstructor, dMissing$gts, pedsItrios2rcpp(d$peds));
@@ -685,6 +686,36 @@ if (1) {
 
 	# chain
 	mcmcLin = new('MCMCLinear', y = y, X = X, peds = dMissing$peds, reconstructor = R,
-		Nburnin = 1e3L, Nchain = 1e5L);
+		Nburnin = 1e3L, Nchain = 1e4L);
 	mcmcLin$run();
+	dosage = mcmcLin$imputation %*% 0:2;
+	R2 = cor(d$gts[, 1], dosage)^2;
+	corSNPs = cor(d$gts);
+	
+}
+if (0) {
+	dMissIndep = createIndependent(dMissing);
+	R = new(DiplotypeReconstructor, dMissIndep$gts, pedsItrios2rcpp(dMissIndep$peds));
+	reconstructions = R$reconstructionsAll();
+
+	# chain
+	mcmcLin = new('MCMCLinear', y = y, X = X, peds = dMissIndep$peds, reconstructor = R,
+		Nburnin = 1e3L, Nchain = 1e4L);
+	mcmcLin$run();
+	dosage = mcmcLin$imputation %*% 0:2;
+	R2 = (cor(d$gts[, 1], dosage)^2)[1, 1];
+	corSNPs = cor(d$gts);
+}
+
+if (1) {
+	dMissIndep = createIndependent(dMissing);
+	R = new(DiplotypeReconstructor, dMissIndep$gts, pedsItrios2rcpp(dMissIndep$peds));
+	reconstructions = R$reconstructionsAll();
+
+	# chain
+	mcmcImp = new('MCMCimputation', peds = d$peds, reconstructor = R, Nburnin = 1e3L, Nchain = 1e4L);
+	mcmcImp$run();
+	dosage = mcmcImp$imputation %*% 0:2;
+	R2 = (cor(d$gts[, 1], dosage)^2)[1, 1];
+	corSNPs = cor(d$gts);
 }

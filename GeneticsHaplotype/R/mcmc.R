@@ -223,63 +223,6 @@ HaplotypeHelperClass = setRefClass('HaplotypeHelper',
 );
 HaplotypeHelperClass$accessors(names(HaplotypeHelperClass$fields()));
 
-# forward declaration
-#setRefClass('DiplotypeReconstructor');
-
-MCMCimputationClass = setRefClass('MCMCimputation', contains = c('MCMC', 'HaplotypeHelper'),
-	fields = list(
-		peds = 'list',
-		# Diplotype recontstruction to use
-		#reconstruction = 'DiplotypeReconstructor',
-		reconstruction = 'envRefClass',
-		state = 'matrix'
-	),
-	methods = list(
-	#
-	#	<p> methods
-	#
-	initialize = function(...) {
-		.self$initFields(...);
-		# Haplotype Helper
-		initialize_cache();
-		# add default prior
-		if (is.null(prior$haplotypes)) prior$haplotypes <<- rep(1, Nhts);
-		# draw first state
-		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
-		state <<- reconstruction$drawFromHfs(htfs, runif(length(peds)));
-		.self
-	},
-	getCountMarkers = function()reconstruction$countMarkers(),
-	#
-	# <p> helpers
-	#
-	redrawFamily = function(j) {
-		# posterior distribution of haplotypes
-		htfsPost = freqHat(state, j) + prior$haplotypes;
-		#print(round(vector.std(htfsPost)*36, 1));
-		# <A> module indexes from 0
-		dtsJ = R$drawFamFromHfs(j - 1, htfsPost, runif(1));
-		#if (any(state[Ncum[j]:(Ncum[j + 1] - 1), ] - dtsJ != 0)) browser();
-
-		state[Ncum[j]:(Ncum[j + 1] - 1), ] <<- dtsJ;
-		NULL
-	},
-	getParameter = function() {
-		#if (any(state[Ifounders, ] - state0 != 0)) print(which(state[Ifounders, ] - state0 != 0));
-		table.n.freq(state[Ifounders, ], min = 0, n = Nhts - 1)
-	},
-	update = function(i) {
-		# iteratively update families
-		famI = ((i - 1) %% N) + 1;
-		redrawFamily(famI);
-	}
-	#
-	#	</p> methods
-	#
-	)
-);
-MCMCimputationClass$accessors(names(MCMCimputationClass$fields()));
-
 #
 #	<p> helper functions
 #
