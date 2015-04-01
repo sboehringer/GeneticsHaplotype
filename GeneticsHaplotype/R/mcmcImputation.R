@@ -33,7 +33,7 @@ MCMCimputationClass = setRefClass('MCMCimputation', contains = c('MCMC', 'Haplot
 		htfsPost = freqHat(state, j) + prior$haplotypes;
 		#print(round(vector.std(htfsPost)*36, 1));
 		# <A> module indexes from 0
-		dtsJ = R$drawFamFromHfs(j - 1, htfsPost, runif(1));
+		dtsJ = reconstructor$drawFamFromHfs(j - 1, htfsPost, runif(1));
 		#if (any(state[Ncum[j]:(Ncum[j + 1] - 1), ] - dtsJ != 0)) browser();
 
 		state[Ncum[j]:(Ncum[j + 1] - 1), ] <<- dtsJ;

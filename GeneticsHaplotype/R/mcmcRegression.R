@@ -44,7 +44,7 @@ MCMCRegressionClass = setRefClass('MCMCRegression', contains = c('MCMCBlock', 'H
 	runInitialize = function() {
 		callSuper();
 		# determine number of loci, reconstructions
-		reconstructions <<- R$reconstructionsAll();
+		reconstructions <<- reconstructor$reconstructionsAll();
 		Nloci <<- as.integer(log2(max(unlist(reconstructions)) + 1));
 		Npeds = length(peds);
 
@@ -62,7 +62,7 @@ MCMCRegressionClass = setRefClass('MCMCRegression', contains = c('MCMCBlock', 'H
 	},
 	drawFromPrior = function() {
 		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
-		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
+		state$hts <<- reconstructor$drawFromHfs(htfs, runif(length(peds)));
 		NULL
 	},
 	getCountMarkers = function()Nloci,

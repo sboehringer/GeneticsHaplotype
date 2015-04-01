@@ -21,6 +21,8 @@ source('GeneticsHaplotype/R/mcmcLinear.R');
 source('GeneticsHaplotype/R/mcmcBinomial.R');
 source('GeneticsHaplotype/R/pedigree.R');
 source('GeneticsHaplotype/R/simulation.R');
+source('GeneticsHaplotype/R/simulationModels.R');
+source('RgenericAll.R');
 
 if (F) {
 	library('GeneticsHaplotype');
@@ -719,10 +721,24 @@ if (0) {
 	R2 = (cor(d$gts[, 1], dosage)^2)[1, 1];
 	corSNPs = cor(d$gts);
 }
-if (1) {
+if (0) {
 	R = new(DiplotypeReconstructor, dMissing$gts, pedsItrios2rcpp(dMissing$peds));
 
 	# chain
 	mcmcImp = new('MCMCimputation', peds = d$peds, reconstructor = R, Nburnin = 1e3L, Nchain = 1e4L);
 	mcmcImp$run();
+}
+if (1) {
+	models = list(
+		list(mcmcClass = 'MCMCimputation', usePhenotype = F, coerceFounders = F),
+		list(mcmcClass = 'MCMCimputation', usePhenotype = F, coerceFounders = T),
+		list(mcmcClass = 'MCMCLinear', usePhenotype = T, coerceFounders = F),
+		list(mcmcClass = 'MCMCLinear', usePhenotype = T, coerceFounders = T)
+	);
+
+	sim = simulationModelComparison(
+		htfs = rev(vector.std(1:8)), N = 2e2, pedTemplate = pedTemplate,
+		simulatePhenotype = simulatePhenotypesLinear, beta = c(0, 2), sd = 1,
+		models = models, Nburnin = 1e2L, Nchain = 1e3L
+	);
 }

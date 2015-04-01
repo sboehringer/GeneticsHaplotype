@@ -22,3 +22,5 @@ Collate:
 	mcmcLinear.R
 	mcmcBinomial.R
 	dataAnalysis.R
+	simulationModels.R
+

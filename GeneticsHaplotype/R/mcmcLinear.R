@@ -9,19 +9,8 @@
 
 MCMCLinearClass = setRefClass('MCMCLinear', contains = c('MCMCRegression'),
 	fields = list(
-		# Rcpp module to compute reconstructions
-		reconstructor = 'envRefClass',
-		# Diplotype recontstruction to use
-		reconstructions = 'list',
-		# risk genotypes for each reconstruction
-		reconstructionsGts = 'list',
-		peds = 'list',
-		state = 'list',
 		X = 'matrix',	# design matrix
-		y = 'numeric',	# response vector
-		Nloci = 'integer',
-		gtScores = 'numeric',
-		NpedSplit = 'integer'
+		y = 'numeric'	# response vector
 	),
 	methods = list(
 	#
@@ -164,7 +153,7 @@ MCMCLinearReFamClass = setRefClass('MCMCLinearReFam', contains = c('MCMCBlock', 
 	},
 	drawFromPrior = function() {
 		htfs = rep(1, Nhts);	# <i> draw from Dirichlet
-		state$hts <<- R$drawFromHfs(htfs, runif(length(peds)));
+		state$hts <<- reconstructor$drawFromHfs(htfs, runif(length(peds)));
 		state$beta <<- rnorm(ncol(X) + 1, 0, 1);	# use prior parameters <!>
 		state$sigma <<- 1;	# use prior parameters <!>, sigma is variance <!>
 		state$sigmaRe <<- 1;	# use prior parameters <!>, sigmaRe is variance <!>
