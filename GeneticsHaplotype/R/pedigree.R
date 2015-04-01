@@ -149,7 +149,7 @@ plotPedigree = plotPedigree_kinship2 = function(ped, tag = '', sex = NULL) {
 	sex = 2 - sexu;	# recode
 	sex[is.na(sex)] = 3;	# 3 value for missing
 	# <p> plot using function pedigree
-	pedPlot = with(pedu, pedigree(iid, pid, mid, sex, affected = rep(0, nrow(pedu))));
+	pedPlot = with(pedu, {par(cex = .3); pedigree(iid, pid, mid, sex, affected = rep(0, nrow(pedu)))});
 	par(xpd = T);
 	plot(pedPlot, id = paste(paste(ped$iid, ped$fid, sep = '*'), tag, sep = "\n"));
 }
@@ -265,3 +265,115 @@ pedCoeffOfRel = function(ped) {
 	corMat
 }
 pedsCoeffOfRel = function(peds)lapply(peds, pedCoeffOfRel)
+
+#
+#	pedigree cleaning
+#
+
+C = as.character;
+U = unlist;
+# split a pedigree data frame (collection of families) into a list of families
+pedigreeSeparate = function(ped) {
+	# <p> build clusters
+	clusters = list();		# holds members of clusters
+	n2c = list();			# maps members to clusters; name2cluster
+	# <p> founders
+	iidFdr = ped$iid[is.na(ped$mid) & is.na(ped$pid)];
+	for (i in iidFdr) {
+		it = ped[which(ped$iid == i), ];			# inheritance trio
+		# open new cluster for founders
+		clusters[[C(i)]] = it;
+		# i is garuanteed to be a unique new cluster name
+		n2c[[C(it$iid)]] = C(i);
+	}
+	# <p> offspring
+	# <!> only process inheritance trio if both parents are already known
+	# -> forward references
+	stack = setdiff(ped$iid, iidFdr);
+	while (length(stack) > 0) {
+		it = ped[which(ped$iid == stack[1]), ];			# inheritance trio
+		# is any parents not yet processed?
+		if (is.null(n2c[[C(it$mid)]]) || is.null(n2c[[C(it$pid)]])) {
+			# rotate stack
+			stack = c(stack[-1], stack[1]);
+			next;
+		}
+		# join clusters if needed
+		if (n2c[[C(it$mid)]] != n2c[[C(it$pid)]]) {
+			clusters[[n2c[[C(it$mid)]]]] = rbind(clusters[[n2c[[C(it$mid)]]]], clusters[[n2c[[C(it$pid)]]]]);
+			clusters[[n2c[[C(it$pid)]]]] = NULL;
+			n2c[which(n2c == n2c[[C(it$pid)]])] = n2c[[C(it$mid)]];
+		}
+		n2c[[C(it$iid)]] = n2c[[C(it$mid)]];
+		clusters[[n2c[[C(it$iid)]]]] = rbind(clusters[[n2c[[C(it$iid)]]]], it);
+		stack = stack[-1];
+	}
+	clusters
+}
+
+pedSanitizeSingle = function(ped, pedFactor = 1e3L) {
+	pedO = ped;
+	# <p> missing parents
+	newParents = list();
+	myFid = ped$fid[1];
+	iidCounter = pedFactor * myFid;
+	for(i in 1:nrow(ped)) {
+		if (sum(is.na(ped[i, c('mid', 'pid')])) == 1) {
+			if (is.na(ped$mid[i])) {
+				if (!is.null(newParents[[C(ped$pid[i])]])) {
+					ped$mid[i] = newParents[[C(ped$pid[i])]];
+				} else {
+					newParents[[C(ped$pid[i])]] = ped$mid[i] = iidCounter;
+					iidCounter = iidCounter + 1;
+				}
+			} else {
+				if (!is.null(newParents[[C(ped$mid[i])]])) {
+					ped$pid[i] = newParents[[C(ped$mid[i])]];
+				} else {
+					newParents[[C(ped$mid[i])]] = ped$pid[i] = iidCounter;
+					iidCounter = iidCounter + 1;
+				}
+			}
+		}
+	}
+	if (length(newParents) > 0) {
+		pedNew = Df(fid = myFid, iid = unique(unlist(newParents)), mid = NA, pid = NA);
+		ped = rbind(ped, pedNew);
+	}
+	# <p> separate into components
+	cls = pedigreeSeparate(ped);
+	if (length(cls) > 1) {
+		clsN = lapply(1:length(cls), function(i) {
+			ped = cls[[i]];
+			ped$fid = pedFactor * myFid + i;
+			ped
+		});
+		ped = do.call(rbind, clsN);
+	}
+
+# 	# <p> split unreachable members
+# 	iidParents = unique(na.omit(c(ped$mid, ped$pid)));
+# 	fidCounter = pedFactor * ped$fid[1];
+# 	for(i in 1:nrow(ped)) {
+# 		# founder && not reachable
+# 		if (sum(is.na(ped[i, c('mid', 'pid')])) == 2 && !(ped$iid[i] %in% iidParents)) {
+# 			ped$fid[i] = fidCounter;
+# 			fidCounter = fidCounter + 1;
+# 		}
+# 	}
+
+	ped
+}
+# assume ped to have been run through ped2uniqueId
+pedSanitize = function(pedu) {
+	peds = lapply(unique(pedu$fid), function(fid)pedSanitizeSingle(pedu[pedu$fid == fid, ]));
+	pedS = do.call(rbind, peds);
+	pedS
+}
+
+pedRemoveSingletons = function(ped) {
+	fids = unique(ped$fid);
+	pedSingletons = fids[which(sapply(fids, function(fid)length(ped$iid[ped$fid == fid])) == 1)];
+	pedFam = ped[!(ped$fid %in% pedSingletons), ];
+	pedFam
+}
