@@ -63,8 +63,8 @@ simulationModelComparison = function(..., Nrepetition = 1L, lapply__ = lapply) {
 }
 
 simulationModelComparisonSpec = function(spec, htfs, N, pedTemplate, beta,
-	Nburnin = 1e2L, Nchain = 1e3L, Nrepetition = 1L, lapply__ = lapply) {
-	args = c(list(htfs = htfs, N = N, pedTemplate = pedTemplate,
+	Nburnin = 1e2L, Nchain = 1e3L, Nrepetition = 1L, missingness = 0, lapply__ = lapply) {
+	args = c(list(htfs = htfs, N = N, pedTemplate = pedTemplate, missingness = missingness,
 		simulatePhenotype = get(spec$phenotypeFunction), beta = beta,
 		models = spec$models
 	), spec$phenotype);
