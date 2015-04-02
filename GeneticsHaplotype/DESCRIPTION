@@ -7,12 +7,13 @@ Author: Stefan Boehringer
 Maintainer: Stefan Boehringer <r-packages@s-boehringer.org>
 Description: Implements various algorithms needed in genetic haplotype based analyses. Supports family based data. Reconstruction of diplotypes, given genotypes, drawing thereof. MCMC algorithms.
 License: LGPL 2.0
-Imports: methods, Rcpp (>= 0.11.1)
+Imports: methods, sets, Rcpp (>= 0.11.1)
 LinkingTo: Rcpp
 RcppModules: Reconstructor
 Collate:
 	zzz.R
 	Rdata.R
+	Rfunctions.R
 	RcppExports.R
 	pedigree.R
 	simulation.R
