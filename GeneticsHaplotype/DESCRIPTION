@@ -23,4 +23,5 @@ Collate:
 	mcmcBinomial.R
 	dataAnalysis.R
 	simulationModels.R
+	simulationModelsExample.R
 
