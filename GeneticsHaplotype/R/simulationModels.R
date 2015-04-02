@@ -57,7 +57,7 @@ simulationModelComparisonSingle = function(
 
 simulationModelComparison = function(..., Nrepetition = 1L, lapply__ = lapply) {
 	print(date());
-	r = lapply__(1:Nrepetition, function(i, ...) simulationModelComparisonSingle(...), ...);
+	r = Lapply__(1:Nrepetition, function(i, ...) simulationModelComparisonSingle(...), ...);
 	print(date());
 	r
 }
