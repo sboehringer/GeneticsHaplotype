@@ -55,18 +55,20 @@ simulationModelComparisonSingle = function(
 	r
 }
 
-simulationModelComparison = function(..., Nrepetition = 1L, lapply__ = Lapply) {
+simulationModelComparison = function(..., Nrepetition = 5e2L) {
 	print(date());
-	r = lapply__(1:Nrepetition, function(i, ...) simulationModelComparisonSingle(...), ...);
+	print(Nrepetition);
+	r = Lapply(1:Nrepetition, function(i, ...) simulationModelComparisonSingle(...), ...);
 	print(date());
 	r
 }
 
 simulationModelComparisonSpec = function(spec, htfs, N, pedTemplate, beta,
-	Nburnin = 1e2L, Nchain = 1e3L, Nrepetition = 1L, missingness = 0, lapply__ = lapply) {
+	Nburnin = 1e2L, Nchain = 1e3L, Nrepetition, missingness = 0) {
 	args = c(list(htfs = htfs, N = N, pedTemplate = pedTemplate, missingness = missingness,
 		simulatePhenotype = get(spec$phenotypeFunction), beta = beta,
-		models = spec$models
+		models = spec$models,
+		Nrepetition = Nrepetition
 	), spec$phenotype);
 	sim = do.call(simulationModelComparison, args);
 }
