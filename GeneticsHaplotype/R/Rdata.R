@@ -1235,6 +1235,17 @@ vector.embed = function(v, idcs, e, idcsResult = T) {
 	r[idcs] = e;
 	r
 }
+# set values at idcs
+vector.assign = function(v, idcs, e) {
+	v[idcs] = e;
+	v
+}
+matrix.assign = function(m, idcs, e, byrow = T) {
+	if (byrow)
+		m[idcs, ] = e else
+		m[, idcs] = e
+	m
+}
 
 vectorIdcs = function(v, f, ..., not = F) {
 	r = sapply(v, f, ...);
@@ -1417,7 +1428,7 @@ data.frame.types = function(df, numeric = c(), character = c(), factor = c(), in
 # as of 13.11.2014 <!>: sapply -> simplify_
 #' Create data frames with more options than \code{data.frame}
 Df_ = function(df0, headerMap = NULL, names = NULL, min_ = NULL,
-	as_numeric = NULL, as_character = NULL, as_factor = NULL,
+	as_numeric = NULL, as_character = NULL, as_factor = NULL, as_integer = NULL,
 	row.names = NA, valueMap = NULL, Df_as_is = TRUE, simplify_ = FALSE,
 	deep_simplify_ = FALSE, t_ = FALSE, unlist_cols = F, transf_log = NULL, transf_m1 = NULL) {
 	#r = as.data.frame(df0);
@@ -1441,6 +1452,10 @@ Df_ = function(df0, headerMap = NULL, names = NULL, min_ = NULL,
 	if (!is.null(as_numeric)) {
 		dfn = apply(r[, as_numeric, drop = F], 2, function(col)as.numeric(avu(col)));
 		r[, as_numeric] = dfn;
+	}
+	if (!is.null(as_integer)) {
+		dfn = apply(r[, as_integer, drop = F], 2, function(col)as.integer(avu(col)));
+		r[, as_integer] = dfn;
 	}
 	if (!is.null(as_character)) {
 		dfn = apply(r[, as_character, drop = F], 2, function(col)as.character(avu(col)));
@@ -1509,6 +1524,10 @@ List = function(..., min_ = NULL, envir = parent.frame(), names_ = NULL) {
 }
 
 pop = function(v)(v[-length(v)])
+# differences between successive elements, first diff is first element with start
+vectorLag = function(v, start = 0)pop(c(v, start) - c(start, v))
+splitN = function(N, by = 4) vectorLag(round(cumsum(rep(N/by, by))));
+splitToMax = function(N, max = 4) vectorLag(round(cumsum(rep(N/ceiling(N/max), ceiling(N/max)))));
 
 #
 #	<par> sets and permutations
