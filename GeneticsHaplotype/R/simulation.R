@@ -160,12 +160,12 @@ simulatePhenotypesBinRaw = function(gts, beta, score = 0, scoreGt = scoresL$addi
 	list(mm = mm, risk = risk, y = y)
 }
 
-simulatePhenotypesBin = function(gts, beta, score = 0, scoreGt = scoresL$additive, link = plogis) {
+simulatePhenotypesBin = function(gts, beta, score = 0, scoreGt = scoresL$additive, link = pnorm) {
 	simulatePhenotypesBinRaw(gts, beta, score, scoreGt, link)$y
 }
 
 simulatePhenotypesBinReFam = function(pedIdcs, gts, beta, score = 0,
-	scoreGt = scoresL$additive, sdRe = 1, link) {
+	scoreGt = scoresL$additive, sdRe = 1, link = pnorm) {
 
 	reFam = rnorm(length(pedIdcs), 0, sdRe);
 	scoreReNO = unlist(lapply(1:length(pedIdcs), function(i)rep(reFam[i], length(pedIdcs[[i]]))));
@@ -173,7 +173,7 @@ simulatePhenotypesBinReFam = function(pedIdcs, gts, beta, score = 0,
 	simulatePhenotypesBinRaw(gts, beta, score + scoreRe, scoreGt = scoreGt, link = link)$y
 }
 simulatePhenotypesBinReRel = function(pedIdcs, gts, beta, score = 0,
-	scoreGt = scoresL$additive, sdRe = 1, link = plogis, cors) {
+	scoreGt = scoresL$additive, sdRe = 1, link = pnorm, cors) {
 
 	scoreReNO = unlist(lapply(1:length(pedIdcs),
 		function(i)mvrnorm(mu = rep(0, nrow(cors[[i]])), Sigma = sdRe^2 * cors[[i]])

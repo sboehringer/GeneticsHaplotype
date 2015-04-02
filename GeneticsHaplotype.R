@@ -476,13 +476,13 @@ if (0) {
 			30, 1, 20, 21,
 			31, 1, 22, 23)
 	);
-	cors = lapply(tests[2:3], function(test) {
+	passCors = lapply(tests[2:3], function(test) {
 		ped = Df(names = c('iid', 'fid', 'mid', 'pid'), matrix(test, byrow = T, ncol = 4));
 		ped2 = pedSplit2ivTrios(ped);
 		print(ped2[[1]]);
 		pedCoeffOfRel(ped2[[1]])
 	});
-	print(cors);
+	print(passCors);
 }
 
 if (0) {
@@ -538,18 +538,18 @@ if (0) {
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	reconstructions = R$reconstructionsAll();
 	test_reconstruction(d, reconstructions);
-	cors = pedsCoeffOfRel(d$peds);
+	passCors = pedsCoeffOfRel(d$peds);
 	}
 
 	# simulate
 	y = simulatePhenotypesLinearReRel(pedsIdcs(d$peds), d$gts[, 1], c(0, 7), sd = 2,
-		sdRe = 1, cors = cors)[, 1];
+		sdRe = 1, passCors = passCors)[, 1];
 	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
 	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
 	# chain
 	mcmcLinReRel = new('MCMCLinearReRel',
 		y = y, X = X, peds = d$peds, reconstructor = R,
-		Nburnin = 1e3L, Nchain = 5e5L, cors = cors
+		Nburnin = 1e3L, Nchain = 5e5L, passCors = passCors
 	);
 	mcmcLinReRel$run();
 }
@@ -652,18 +652,18 @@ if (0) {
 	if (T) {
 	R = new(DiplotypeReconstructor, d$gts, pedsItrios2rcpp(d$peds));
 	reconstructions = R$reconstructionsAll();
-	cors = pedsCoeffOfRel(d$peds);
+	passCors = pedsCoeffOfRel(d$peds);
 	}
 
 	# simulate
 	y = simulatePhenotypesBinReRel(pedsIdcs(d$peds), d$gts[, 1], c(-1, 1), sdRe = 1,
-		link = pnorm, cors = cors);
+		link = pnorm, passCors = passCors);
 	#X = model.matrix(~ gts, data.frame(gts = d$gts[, 1]));
 	X = model.matrix(~ 1, data.frame(dummy = rep(1, length(y))));
 	# chain
 	mcmcBinProbitReRel = new('MCMCBinProbitReRel',
 		y = y, X = X, peds = d$peds, reconstructor = R,
-		Nburnin = 1e3L, Nchain = 5e5L, cors = cors
+		Nburnin = 1e3L, Nchain = 5e5L, passCors = passCors
 	);
 	mcmcBinProbitReRel$run();
 }
@@ -728,17 +728,100 @@ if (0) {
 	mcmcImp = new('MCMCimputation', peds = d$peds, reconstructor = R, Nburnin = 1e3L, Nchain = 1e4L);
 	mcmcImp$run();
 }
-if (1) {
+if (0) {
 	models = list(
-		list(mcmcClass = 'MCMCimputation', usePhenotype = F, coerceFounders = F),
-		list(mcmcClass = 'MCMCimputation', usePhenotype = F, coerceFounders = T),
-		list(mcmcClass = 'MCMCLinear', usePhenotype = T, coerceFounders = F),
-		list(mcmcClass = 'MCMCLinear', usePhenotype = T, coerceFounders = T)
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = F),
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = T),
+		list(mcmcClass = 'MCMCLinear', passPhenotype = T, coerceFounders = F),
+		list(mcmcClass = 'MCMCLinear', passPhenotype = T, coerceFounders = T)
 	);
 
 	sim = simulationModelComparison(
 		htfs = rev(vector.std(1:8)), N = 2e2, pedTemplate = pedTemplate,
 		simulatePhenotype = simulatePhenotypesLinear, beta = c(0, 2), sd = 1,
-		models = models, Nburnin = 1e2L, Nchain = 1e3L
+		models = models, Nburnin = 1e2L, Nchain = 1e3L,
+		Nrepetition = 10
+	);
+}
+
+if (0) {
+	models = list(
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = F),
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = T),
+		list(mcmcClass = 'MCMCLinearReFam', passPhenotype = T, coerceFounders = F),
+		list(mcmcClass = 'MCMCLinearReFam', passPhenotype = T, coerceFounders = T)
+	);
+
+	sim = simulationModelComparison(
+		htfs = rev(vector.std(1:8)), N = 2e2, pedTemplate = pedTemplate,
+		simulatePhenotype = simulatePhenotypesLinearReFam, beta = c(0, 2), sd = 1, usePedIdcs = T,
+		models = models, Nburnin = 1e2L, Nchain = 1e3L,
+		Nrepetition = 2
+	);
+}
+
+if (0) {
+	models = list(
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = F),
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = T),
+		list(mcmcClass = 'MCMCLinearReRel', passPhenotype = T, coerceFounders = F, passCors = T),
+		list(mcmcClass = 'MCMCLinearReRel', passPhenotype = T, coerceFounders = T, passCors = T)
+	);
+
+	sim = simulationModelComparison(
+		htfs = rev(vector.std(1:8)), N = 2e2, pedTemplate = pedTemplate,
+		simulatePhenotype = simulatePhenotypesLinearReRel, beta = c(0, 2), sd = 1,
+			usePedIdcs = T, useCors = T,
+		models = models, Nburnin = 1e2L, Nchain = 1e3L,
+		Nrepetition = 2
+	);
+}
+
+if (0) {
+	models = list(
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = F),
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = T),
+		list(mcmcClass = 'MCMCBinProbitReFam', passPhenotype = T, coerceFounders = F),
+		list(mcmcClass = 'MCMCBinProbitReFam', passPhenotype = T, coerceFounders = T)
+	);
+
+	sim = simulationModelComparison(
+		htfs = rev(vector.std(1:8)), N = 2e2, pedTemplate = pedTemplate,
+		simulatePhenotype = simulatePhenotypesBinReFam, beta = c(0, 2), sd = 1, usePedIdcs = T,
+		models = models, Nburnin = 1e2L, Nchain = 1e3L,
+		Nrepetition = 2
+	);
+}
+
+if (0) {
+	models = list(
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = F),
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = T),
+		list(mcmcClass = 'MCMCBinProbitReRel', passPhenotype = T, coerceFounders = F, passCors = T),
+		list(mcmcClass = 'MCMCBinProbitReRel', passPhenotype = T, coerceFounders = T, passCors = T)
+	);
+
+	sim = simulationModelComparison(
+		htfs = rev(vector.std(1:8)), N = 2e2, pedTemplate = pedTemplate,
+		simulatePhenotype = simulatePhenotypesBinReRel, beta = c(0, 2),
+			usePedIdcs = T, useCors = T,
+		models = models, Nburnin = 1e2L, Nchain = 1e3L,
+		Nrepetition = 2
+	);
+}
+if (0) {
+	cmpSpec = list(
+		phenotypeFunction = 'simulatePhenotypesBinReRel',
+		phenotype = list(usePedIdcs = T, useCors = T),
+		models = list(
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = F),
+		list(mcmcClass = 'MCMCimputation', passPhenotype = F, coerceFounders = T),
+		list(mcmcClass = 'MCMCBinProbitReRel', passPhenotype = T, coerceFounders = F, passCors = T),
+		list(mcmcClass = 'MCMCBinProbitReRel', passPhenotype = T, coerceFounders = T, passCors = T)
+	));
+
+	sim = simulationModelComparisonSpec(cmpSpec,
+		htfs = rev(vector.std(1:8)), N = 2e2, pedTemplate = pedTemplate, beta = c(0, 2),
+		Nburnin = 1e2L, Nchain = 1e3L, Nrepetition = 2
 	);
 }

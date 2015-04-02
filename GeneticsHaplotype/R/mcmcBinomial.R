@@ -84,7 +84,7 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCRegression'),
 		mu = S1 %*% (prior$betaMuScaled + Xs %*% state$liability);
 		# draw new state
 		state$beta <<- mvrnorm(1, mu, S1)[, 1];
-		print(sprintf('Beta: %.2f', state$beta))
+		#print(sprintf('Beta: %.2f', state$beta))
 		NULL
 	},
 	llOutcome = function(i, yFam, lpredFam, famSel) {
@@ -121,7 +121,7 @@ MCMCBinomialClass = setRefClass('MCMCBinomial', contains = c('MCMCRegression'),
 		psLog = prior$nuLog + sapply(prior$nuRange, function(nu)
 			sum(-lgamma(nu/2) -log(nu/2)*(nu/2) -log(state$liabilityVar)*(nu/2 - 1) - nu * state$liabilityVar/2));
 		state$nu <<- (prior$nuRange %*% rmultinom(1, 1, exp(psLog - max(psLog))))[1, 1];
-		print(sprintf('Nu: %.5f', state$nu))
+		#print(sprintf('Nu: %.5f', state$nu))
 		#print( exp(psLog - max(psLog)));
 		NULL
 	}
@@ -187,7 +187,7 @@ MCMCBinProbitClass = setRefClass('MCMCBinProbit', contains = c('MCMCRegression')
 		mu = S1 %*% (prior$betaMuScaled + t(Xg) %*% state$liability);
 		# draw new state
 		state$beta <<- mvrnorm(1, mu, S1);
-		print(sprintf('Beta: %.2f', state$beta))
+		#print(sprintf('Beta: %.2f', state$beta))
 		NULL
 	},
 	llOutcome = function(i, yFam, lpredFam, famSel) {
@@ -267,7 +267,7 @@ MCMCBinProbitReFamClass = setRefClass('MCMCBinProbitReFam', contains = c('MCMCRe
 		mu = S1 %*% (prior$betaMuScaled + t(Xg) %*% (state$liability + state$re));
 		# draw new state
 		state$beta <<- mvrnorm(1, mu, S1);
-		print(sprintf('Beta: %.2f', state$beta))
+		#print(sprintf('Beta: %.2f', state$beta))
 		NULL
 	},
 	llOutcome = function(i, yFam, lpredFam, famSel) {
@@ -300,7 +300,7 @@ MCMCBinProbitReFamClass = setRefClass('MCMCBinProbitReFam', contains = c('MCMCRe
 		gishapeRe = prior$gishapeRe + length(y)/2;
 		giscaleRe = prior$giscaleRe + (state$re %*% state$re)[1, 1]/2;
 		state$sigmaRe <<- 1/rgamma(1, shape = gishapeRe, scale = 1/as.numeric(giscaleRe));
-		print(sprintf('SigmaRe: %.2f', state$sigmaRe));
+		#print(sprintf('SigmaRe: %.2f', state$sigmaRe));
 		NULL
 	}
 	#

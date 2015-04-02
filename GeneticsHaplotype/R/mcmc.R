@@ -59,7 +59,7 @@ MCMCClass = setRefClass('MCMC',
 		summaries = apply(pars, 2, function(par) {
 			list(
 				mean = mean(par), median = median(par), sd = sd(par),
-				credible = quantile(pars[, 1], probs = c(credibleAlpha, 1 - credibleAlpha))
+				credible = quantile(pars[, 1], probs = c(credibleAlpha/2, 1 - credibleAlpha/2))
 			)
 		});
 		if (!is.null(names)) names(summaries) = paste(names, 1:(length(summaries)/length(names)), sep = '');

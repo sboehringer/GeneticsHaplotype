@@ -13,3 +13,4 @@ haplotypecpp/cmake_install.cmake
 haplotypecpp/CMakeFiles/
 data
 dataAnalysisExp.R
+simulationExp.R
