@@ -13,7 +13,8 @@ modelListMCMCsimulationsPedTemplate = Df(names = c('iid', 'mid', 'pid'), matrix(
 
 modelListMCMCsimulations = list(
 	pars = list(list(
-		Nburnin = 1e4L, Nchain = 1e5L, Nrepetition = 5e2, N = 2e2,
+		#Nburnin = 1e4L, Nchain = 1e5L, Nrepetition = 5e2, N = 2e2,
+		Nburnin = 5e4L, Nchain = 2e5L, Nrepetition = 1e3, N = 2e2,
 		pedTemplate = modelListMCMCsimulationsPedTemplate
 	)),
 	htfs = list(

@@ -192,16 +192,17 @@ MCMCBinProbitClass = setRefClass('MCMCBinProbit', contains = c('MCMCRegression')
 	},
 	llOutcome = function(i, yFam, lpredFam, famSel) {
 		p = pnorm(lpredFam);
-		ll = log(ifelse(yFam, p, 1 - p));
+		ll = as.numeric(na.omit(log(ifelse(yFam, p, 1 - p))));
 		ll
 	},
 	# latent liability
 	update_liability = function(i) {
 		lpred = cbind(X, gtScores[genotypes() + 1]) %*% state$beta;
 		liab = rtruncnorm(length(lpred), lpred, 1,
-			lower = ifelse(y == 1, 0, -Inf), upper = ifelse(y == 1, Inf, 0)
+			lower = ifelse(y == 1 & !is.na(y), 0, -Inf), upper = ifelse(y == 1 | is.na(y), Inf, 0)
 		);
 		state$liability <<- liab;
+		#print(sprintf('Liab: %.2f', var(state$liability)));
 		NULL
 	}
 	#
@@ -211,11 +212,7 @@ MCMCBinProbitClass = setRefClass('MCMCBinProbit', contains = c('MCMCRegression')
 );
 MCMCBinProbitClass$accessors(names(MCMCBinProbitClass$fields()));
 
-MCMCBinProbitReFamClass = setRefClass('MCMCBinProbitReFam', contains = c('MCMCRegression'),
-	fields = list(
-		X = 'matrix',	# design matrix
-		y = 'integer'	# response vector
-	),
+MCMCBinProbitReFamClass = setRefClass('MCMCBinProbitReFam', contains = c('MCMCBinProbit'),
 	methods = list(
 	#
 	#	<p> methods
@@ -267,21 +264,7 @@ MCMCBinProbitReFamClass = setRefClass('MCMCBinProbitReFam', contains = c('MCMCRe
 		mu = S1 %*% (prior$betaMuScaled + t(Xg) %*% (state$liability + state$re));
 		# draw new state
 		state$beta <<- mvrnorm(1, mu, S1);
-		#print(sprintf('Beta: %.2f', state$beta))
-		NULL
-	},
-	llOutcome = function(i, yFam, lpredFam, famSel) {
-		p = pnorm(lpredFam);
-		ll = as.numeric(na.omit(log(ifelse(yFam, p, 1 - p))));
-		ll
-	},
-	# latent liability
-	update_liability = function(i) {
-		lpred = cbind(X, gtScores[genotypes() + 1]) %*% state$beta;
-		liab = rtruncnorm(length(lpred), lpred + state$re, 1,
-			lower = ifelse(y == 1, 0, -Inf), upper = ifelse(y == 1, Inf, 0)
-		);
-		state$liability <<- liab;
+		print(sprintf('Beta: %.2f', state$beta))
 		NULL
 	},
 	update_re = function(i) {
@@ -294,13 +277,14 @@ MCMCBinProbitReFamClass = setRefClass('MCMCBinProbitReFam', contains = c('MCMCRe
 		reFam = rnorm(N, means, sqrt(sigmas));
 		scoreReNO = unlist(lapply(1:N, function(i)rep(reFam[i], Nfams[i])));
 		state$re <<- scoreReNO[IfamsOinv];
+		print(sprintf('Re: %.2f', var(state$re)));
 		NULL
 	},
 	update_sigmaRe = function(i) {
 		gishapeRe = prior$gishapeRe + length(y)/2;
 		giscaleRe = prior$giscaleRe + (state$re %*% state$re)[1, 1]/2;
 		state$sigmaRe <<- 1/rgamma(1, shape = gishapeRe, scale = 1/as.numeric(giscaleRe));
-		#print(sprintf('SigmaRe: %.2f', state$sigmaRe));
+		print(sprintf('SigmaRe: %.2f', state$sigmaRe));
 		NULL
 	}
 	#

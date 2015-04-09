@@ -123,16 +123,17 @@ public:
 		//cout << "#peds: " << peds.size() << endl;
 		//fetcher.print();
 		iid_t	Ncum = 0;
-		for (iid_t i = 0; i < peds.size(); i++, Ncum += peds[i].N()) {
-			//cout << "Ncum: " << Ncum << endl;
+		cout << "Reconstruct" << endl;
+		for (iid_t i = 0; i < peds.size(); Ncum += peds[i].N(), i++) {
+			cout << "Ncum: " << Ncum << endl;
 			R_DiplotypeReconstructionSNPunordered reconstruction(peds[i]);
 			GenotypeFetcherOffset	pedfetcher((GenotypeFetcher &)fetcher, Ncum);
 			//peds[i].print();
 			reconstruction.reconstruct((GenotypeFetcher &)pedfetcher);
-			//reconstruction.print();
+			reconstruction.print();
 			reconstructions.push_back(std::move(reconstruction));
 		}
-		//cout << "did reconstruct" << endl;
+		cout << "did reconstruct" << endl;
 	}
 
 	IntegerMatrix	drawFromHfs(const NumericVector &hfsR, const NumericVector &u) const {

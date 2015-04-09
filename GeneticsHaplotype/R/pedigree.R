@@ -15,16 +15,26 @@ uniqueId = function(fid, iid, mx = max(iid)) {
 	iidU = as.character(shift * fid + iid);	# unique iid
 	iidU
 }
-pedUniqueId = function(ped, mx = max(ped$iid)) with(ped, uniqueId(fid, iid, mx = mx))
-ped2uniqueId = function(ped, mx = max(ped$iid)) with(ped, {
-	iidU = pedUniqueId(ped, mx = mx);
-	idMap = listKeyValue(iidU, 1:nrow(ped));
+pedUniqueIds = function(ped, mx = max(ped$iid)) with(ped, {
+	Union(uniqueId(fid, iid, mx = mx), uniqueId(fid, mid, mx = mx), uniqueId(fid, pid, mx = mx))
+})
+pedUniqueIdMap = function(ped) {
+	iidU = pedUniqueIds(ped, mx = max(ped$iid));
+	idMap = listKeyValue(iidU, 1:length(iidU));
+	idMap
+}
+ped2uniqueId = function(ped, pedtransf = ped) with(pedtransf, {
+	idMap = pedUniqueIdMap(ped);
+	mx = max(ped$iid);
 	r = data.frame(fid = fid,
-		iid = avu(idMap[iidU]),
+		iid = avu(idMap[uniqueId(fid, iid, mx)]),
 		mid = avu(idMap[uniqueId(fid, mid, mx)]),
 		pid = avu(idMap[uniqueId(fid, pid, mx)]));
 	r
 })
+pedUniqueId = function(ped, pedtransf = ped) {
+	ped2uniqueId(ped, pedtransf)$iid
+}
 
 pedDistFromRoot = function(pedu, col = 'mid', maxDepth = 5) {
 	# use maternal line
@@ -91,14 +101,14 @@ ivTriosInferSex = function(ped) {
 # compute order that maps back a vector with values for iids 1:N_1, 1:N_2, ... back to the original ped-order
 pedInverseOrder = function(ped) {
 	idOrig = pedUniqueId(ped);
-	idUniq = unlist(lapply(unique(ped$fid), function(fid)pedUniqueId(ped[ped$fid == fid, ], max(ped$iid))));
-	o = order_align(idOrig, idUniq);
+	idUniq = unlist(lapply(unique(ped$fid), function(fid)pedUniqueId(ped, ped[ped$fid == fid, ])));
+	o = order_align(idUniq, idOrig);
 	o
 }
 pedForwardOrder = function(ped) {
 	idOrig = pedUniqueId(ped);
-	idUniq = unlist(lapply(unique(ped$fid), function(fid)pedUniqueId(ped[ped$fid == fid, ], max(ped$iid))));
-	o = order_align(idUniq, idOrig);
+	idUniq = unlist(lapply(unique(ped$fid), function(fid)pedUniqueId(ped, ped[ped$fid == fid, ])));
+	o = order_align(idOrig, idUniq);
 	o
 }
 
@@ -141,7 +151,7 @@ pedsIdcs = function(peds) {
 	r
 }
 
-plotPedigree = plotPedigree_kinship2 = function(ped, tag = '', sex = NULL) {
+plotPedigree = plotPedigree_kinship2 = function(ped, tag = '', sex = NULL, plotCex = .3) {
 	pedu = ped2uniqueId(ped);
 	require('kinship2');
 	# <p> infer and recode sex
@@ -149,7 +159,7 @@ plotPedigree = plotPedigree_kinship2 = function(ped, tag = '', sex = NULL) {
 	sex = 2 - sexu;	# recode
 	sex[is.na(sex)] = 3;	# 3 value for missing
 	# <p> plot using function pedigree
-	pedPlot = with(pedu, {par(cex = .3); pedigree(iid, pid, mid, sex, affected = rep(0, nrow(pedu)))});
+	pedPlot = with(pedu, {par(cex = plotCex); pedigree(iid, pid, mid, sex, affected = rep(0, nrow(pedu)))});
 	par(xpd = T);
 	plot(pedPlot, id = paste(paste(ped$iid, ped$fid, sep = '*'), tag, sep = "\n"));
 }
@@ -315,6 +325,7 @@ pedigreeSeparate = function(ped) {
 
 pedSanitizeSingle = function(ped, pedFactor = 1e3L) {
 	pedO = ped;
+	ped = ped[, c('fid', 'iid', 'mid', 'pid')];
 	# <p> missing parents
 	newParents = list();
 	myFid = ped$fid[1];
@@ -336,6 +347,12 @@ pedSanitizeSingle = function(ped, pedFactor = 1e3L) {
 					iidCounter = iidCounter + 1;
 				}
 			}
+		}
+		if (!is.na(ped$mid[i]) && !(ped$mid[i] %in% ped$iid)) {
+			newParents[[C(ped$mid[i])]] = ped$mid[i];
+		}
+		if (!is.na(ped$pid[i]) && !(ped$pid[i] %in% ped$iid)) {
+			newParents[[C(ped$pid[i])]] = ped$pid[i];
 		}
 	}
 	if (length(newParents) > 0) {
