@@ -333,6 +333,13 @@ MCMCBinProbitReRelClass = setRefClass('MCMCBinProbitReRel', contains = 'MCMCBinP
 		}));
 		state$re <<- scoreReNO[IfamsOinv];
 		NULL
+	},
+	getParameter = function() {
+		#if (any(state[Ifounders, ] - state0 != 0)) print(which(state[Ifounders, ] - state0 != 0));
+		list(htfs = table.n.freq(state$hts[Ifounders, ], min = 0, n = Nhts - 1),
+			beta = state$beta,
+			sigma = state$sigmaRe
+		)
 	}
 	#	</p> methods
 	#
