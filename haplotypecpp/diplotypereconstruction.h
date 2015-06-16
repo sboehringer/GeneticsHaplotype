@@ -19,6 +19,7 @@
 typedef double					haplotypefs_t;
 typedef Valarray<haplotypefs_t>	hfs_t;
 typedef vector<haplotypefs_t>	hfsv_t;
+typedef vector<diplotype_t>		dtsv_t;
 typedef double					random_t;
 
 class DiplotypeReconstruction
@@ -270,11 +271,23 @@ public:
 	}
 };
 
-typedef vector<diplotype_t>	vector_dts;
+
+hfs_t	haplotypesFromDipolotypes(dtsv_t &d) {
+	hts_t	&hts = * new hts_t();
+	for (int i = 0; i < d.size(); i++) {
+	}
+}
+
+void	dtPairRestriction(dtsv_t &d1, dtsv_t &d2) {
+	
+}
+
+void	trioRestriction(dtsv_t &m, dtsv_t &f, dtsv_t &o) {
+}
 
 class DiplotypeReconstructionSNPunorderedRawPruned : public DiplotypeReconstructionSNPmarginal
 {
-	vector<vector_dts>	reconstructions;
+	vector<dtsv_t>	reconstructions;
 public:
 	DiplotypeReconstructionSNPunorderedRawPruned(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
 		DiplotypeReconstructionSNPmarginal(_pedigree, _fetcher), reconstructions(founders.size())

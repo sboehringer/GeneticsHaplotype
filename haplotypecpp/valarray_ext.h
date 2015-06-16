@@ -78,6 +78,10 @@ public:
 		}
 		return min;
 	}
+	inline bool	exists(const T value) const {
+		int	pos = binary_search(value);
+		return pos < this->size() && this[pos] == value;
+	}
 	inline T	back(void) const { return this->back(); }
 	inline void	print(void) const {
 		cout << setprecision(4);
