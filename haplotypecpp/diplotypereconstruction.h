@@ -174,15 +174,48 @@ inline diplotype_t diplotypeFromTemplate(diplotype_t t, int comb, haplotype_t he
 	return t;
 }
 
-class DiplotypeReconstructionSNPunorderedRaw
-{
+class DiplotypeReconstructionSNPmarginal {
+protected:
 	vector<iid_t>			&founders;
 	GenotypeFetcher			&fetcher;
+	Pedigree				&pedigree;
+	vector<diplotype_t>		templates;
+
+public:
+	/*
+	 *	creation / destruction / boilerplate 
+	 */
+// 	DiplotypeReconstructionSNPunorderedRaw() :
+// 		missing(), heterozygous(),templates()
+// 	{}
+	DiplotypeReconstructionSNPmarginal(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
+		pedigree(_pedigree), founders(_pedigree.founders()), fetcher(_fetcher),
+		templates(founders.size()) {
+
+		for (iid_t i = 0; i < founders.size(); i++) {
+			templates[i] = fetcher.diplotypeTemplate(founders[i]);
+		}
+	}
+	DiplotypeReconstructionSNPmarginal &operator=(DiplotypeReconstructionSNPmarginal &&other) {
+		founders = other.founders;
+		fetcher = other.fetcher;
+		pedigree = other.pedigree;
+		templates = other.templates;
+		return *this;
+	}
+	~DiplotypeReconstructionSNPmarginal() {
+	}
+};
+
+
+class DiplotypeReconstructionSNPunorderedRaw : public DiplotypeReconstructionSNPmarginal {
+	//vector<iid_t>			&founders;
+	//GenotypeFetcher			&fetcher;
 	haplotypes_t			missing;
 	haplotypes_t			heterozygous;
-	// diplotype templates, pre-filled for homozygous positions
-	vector<diplotype_t>		templates;
 	unique_ptr< CartesianIterator<int> >	founderIterator;
+	// diplotype templates, pre-filled for homozygous positions
+	//vector<diplotype_t>		templates;
 
 public:
 	/*
@@ -192,17 +225,14 @@ public:
 // 		missing(), heterozygous(),templates()
 // 	{}
 	DiplotypeReconstructionSNPunorderedRaw(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
-		founders(_pedigree.founders()), fetcher(_fetcher),
-		missing(founders.size()),
-		heterozygous(founders.size()),
-		templates(founders.size()) {
+	  DiplotypeReconstructionSNPmarginal(_pedigree, _fetcher),
+		missing(founders.size()), heterozygous(founders.size()) {
 
 		vector<int>	countFounders(founders.size());
 		for (iid_t i = 0; i < founders.size(); i++) {
 			missing[i] = fetcher.maskMissing(founders[i]);
 			heterozygous[i] = fetcher.maskHeterozygosity(founders[i]);
 			countFounders[i] = fetcher.countReconstructions(founders[i]);
-			templates[i] = fetcher.diplotypeTemplate(founders[i]);
 		}
 		founderIterator = unique_ptr< CartesianIterator<int> >(new CartesianIterator<int>(countFounders));
 	}
@@ -210,11 +240,8 @@ public:
 	}
 
 	DiplotypeReconstructionSNPunorderedRaw &operator=(DiplotypeReconstructionSNPunorderedRaw &&other) {
-		founders = other.founders;
-		fetcher = other.fetcher;
 		missing = other.missing;
 		heterozygous = other.heterozygous;
-		templates = other.templates;
 		founderIterator.reset(other.founderIterator.get());
 		other.founderIterator.reset(nullptr);
 		return *this;
@@ -241,6 +268,19 @@ public:
 		// the latter condition is checked by the first if
 		return i >= founders.size();
 	}
+};
+
+typedef vector<diplotype_t>	vector_dts;
+
+class DiplotypeReconstructionSNPunorderedRawPruned : public DiplotypeReconstructionSNPmarginal
+{
+	vector<vector_dts>	reconstructions;
+public:
+	DiplotypeReconstructionSNPunorderedRawPruned(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
+		DiplotypeReconstructionSNPmarginal(_pedigree, _fetcher), reconstructions(founders.size())
+	{
+	}
+	~DiplotypeReconstructionSNPunorderedRawPruned() {}
 };
 
 #endif // DIPLOTYPERECONSTRUCTION_H
