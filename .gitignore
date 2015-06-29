@@ -4,13 +4,13 @@
 simulations
 RcomputeResources.R
 RgenericAll.R
-
 misc
 debugging
 haplotypecpp/CMakeCache.txt
 haplotypecpp/Makefile
 haplotypecpp/cmake_install.cmake
 haplotypecpp/CMakeFiles/
+haplotypecpp/haplotypecpp
 data
 dataAnalysisExp.R
 simulationExp.R
