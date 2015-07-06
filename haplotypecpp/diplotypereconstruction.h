@@ -206,6 +206,18 @@ public:
 	}
 	~DiplotypeReconstructionSNPmarginal() {
 	}
+	void	diplotypesFromGenotypes(dtsv_t &dts, iid_t iid) const {
+		haplotype_t	missing = fetcher.maskMissing(iid);
+		haplotype_t	heterozygous = fetcher.maskHeterozygosity(iid);
+		int			Ndts = fetcher.countReconstructions(iid);
+		diplotype_t	t = templates[iid];
+
+		for (int i = 0; i < Ndts; i++) {
+			diplotype_t	dt = diplotypeFromTemplate(t, i, heterozygous, missing);
+			if (dt.d1 > dt.d2) break;
+			dts.push_back(dt);
+		}
+	}
 };
 
 
@@ -271,20 +283,7 @@ public:
 	}
 };
 
-
-hfs_t	haplotypesFromDipolotypes(dtsv_t &d) {
-	hts_t	&hts = * new hts_t();
-	for (int i = 0; i < d.size(); i++) {
-	}
-}
-
-void	dtPairRestriction(dtsv_t &d1, dtsv_t &d2) {
-	
-}
-
-void	trioRestriction(dtsv_t &m, dtsv_t &f, dtsv_t &o) {
-}
-
+#if 0
 class DiplotypeReconstructionSNPunorderedRawPruned : public DiplotypeReconstructionSNPmarginal
 {
 	vector<dtsv_t>	reconstructions;
@@ -295,5 +294,6 @@ public:
 	}
 	~DiplotypeReconstructionSNPunorderedRawPruned() {}
 };
+#endif
 
 #endif // DIPLOTYPERECONSTRUCTION_H

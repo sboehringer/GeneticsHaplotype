@@ -254,3 +254,65 @@ void	DiplotypeReconstructionSNPunordered::drawFromHfs(const hfs_t &hfs, const ra
 }
 
 DiplotypeReconstructionSNPunordered::~DiplotypeReconstructionSNPunordered() {}
+
+/*
+ * Founder pruning
+ * Try to limit founder reconstructions in order to avoid to many combinations
+ */
+
+typedef set<haplotype_t>	hts_set;
+class haplotypeSet : public hts_set {
+
+public:
+	haplotypeSet(const dtsv_t &d) : hts_set() {
+		for (int i = 0; i < d.size(); i++) {
+			(*this).insert(d[i].d1);
+			(*this).insert(d[i].d2);
+		}
+	}
+	inline bool	diplotypeRestrict(const diplotype_t d) const {
+		return find(d.d1) == end() && find(d.d2) == end();
+	}
+	inline void	diplotypesRestrict(dtsv_t &d) {
+		for (dtsv_t::iterator it = d.begin(); it != d.end(); ) {
+			if (diplotypeRestrict(*it)) d.erase(it);
+			else ++it;
+		}
+	}
+};
+
+
+void	trioRestriction(dtsv_t &m, dtsv_t &f, dtsv_t &o) {
+	haplotypeSet	htsm(m), htsf(f), htso(o);
+	htso.diplotypesRestrict(m);
+	htso.diplotypesRestrict(f);
+	htsm.diplotypesRestrict(o);
+	htsf.diplotypesRestrict(o);
+}
+
+class DiplotypeReconstructionSNPunorderedRawPruned : public DiplotypeReconstructionSNPmarginal
+{
+// 	vector<iid_t>			&founders;
+// 	GenotypeFetcher			&fetcher;
+// 	Pedigree				&pedigree;
+// 	vector<diplotype_t>		templates;
+
+	vector<dtsv_t>	reconstructions;
+public:
+	DiplotypeReconstructionSNPunorderedRawPruned(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
+		DiplotypeReconstructionSNPmarginal(_pedigree, _fetcher), reconstructions(_pedigree.N())
+	{
+	}
+	~DiplotypeReconstructionSNPunorderedRawPruned() {}
+	
+	void	pruneDiplotypes(void) {
+		for (iid_t i = 0; i < pedigree.N(); i++) {
+			
+			
+		}
+		for (iid_t i = pedigree.sizeItrios(); --i >= 0; ) {
+			
+		}
+	}
+};
+
