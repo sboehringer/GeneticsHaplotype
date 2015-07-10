@@ -282,37 +282,43 @@ public:
 };
 
 
-void	trioRestriction(dtsv_t &m, dtsv_t &f, dtsv_t &o) {
-	haplotypeSet	htsm(m), htsf(f), htso(o);
+void	trioRestriction(dtsv_t &m, dtsv_t &p, dtsv_t &o) {
+	haplotypeSet	htsm(m), htsp(p), htso(o);
 	htso.diplotypesRestrict(m);
-	htso.diplotypesRestrict(f);
+	htso.diplotypesRestrict(p);
 	htsm.diplotypesRestrict(o);
-	htsf.diplotypesRestrict(o);
+	htsp.diplotypesRestrict(o);
 }
 
-class DiplotypeReconstructionSNPunorderedRawPruned : public DiplotypeReconstructionSNPmarginal
-{
-// 	vector<iid_t>			&founders;
-// 	GenotypeFetcher			&fetcher;
-// 	Pedigree				&pedigree;
-// 	vector<diplotype_t>		templates;
-
-	vector<dtsv_t>	reconstructions;
-public:
-	DiplotypeReconstructionSNPunorderedRawPruned(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
-		DiplotypeReconstructionSNPmarginal(_pedigree, _fetcher), reconstructions(_pedigree.N())
-	{
+void	DiplotypeReconstructionSNPunorderedRawPruned::pruneDiplotypes(void) {
+	for (iid_t i = 0; i < pedigree.N(); i++) {
+		diplotypesFromGenotypes(reconstructions[i], i);
 	}
-	~DiplotypeReconstructionSNPunorderedRawPruned() {}
+	/*
+	 * <p> heuristic limitation of possible founder diplotypes
+	 * assume inheritance trios to be ordered according to pedigree
+	 * start at leafs and restrict up to founders
+	 */
+	for (iid_t i = pedigree.sizeItrios(); --i >= 0; ) {
+		trioRestriction(
+			reconstructions[pedigree.trioMid(i)],
+			reconstructions[pedigree.trioPid(i)],
+			reconstructions[pedigree.trioIid(i)]
+		);
+	}
+}
+
+void	DiplotypeReconstructionSNPunorderedRawPruned::print(void) {
+	for (iid_t i = 0; i < pedigree.sizeFounders(); i++) {
+		iid_t	fid = pedigree.founderAt(i);
+		dtsv_t	&dts = reconstructions[fid];
+		cout << "Founder " << fid << " : ";
+		for (int j = 0; j < dts.size(); j++) {
+			if (j) cout << ", ";
+			cout << dts[j].d1 << "|" << dts[j].d2;
+		}
+		
+		cout << endl;
+	}
 	
-	void	pruneDiplotypes(void) {
-		for (iid_t i = 0; i < pedigree.N(); i++) {
-			
-			
-		}
-		for (iid_t i = pedigree.sizeItrios(); --i >= 0; ) {
-			
-		}
-	}
-};
-
+}

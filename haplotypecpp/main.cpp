@@ -45,6 +45,11 @@ vector<g>	ped1Genotypes5 {	// genotypes by row, individuals by column 0..5
 	g { 0, 0, 0, 0, 0, 0 },
 	g { 1, 1, 1, 1, 1, 1 }
 };
+vector<g>	ped1Genotypes6 {	// genotypes by row, individuals by column 0..5
+	g { 3, 3, 1, 1, 3, 1 },
+	g { 3, 3, 1, 1, 3, 1 },
+	g { 3, 3, 1, 1, 3, 1 }
+};
 
 
 pedigree_t	ped2 {
@@ -118,6 +123,15 @@ void	drawN(int Ndraws, pedigree_t &ped, vector<g> &gts, const hfs_t &hfs) {
 	reconstruct(ped, gts);
 	for (int i = 0; i < Ndraws; i++) draw(ped, gts, randL(), hfs);
 }
+void	testPrune(pedigree_t &ped, vector<g> &gts) {
+	Pedigree					pedigree(ped.founder, ped.trios);
+	GenotypeFetcherMatrix<int>	gtF(gts);
+	GenotypeFetcherOffset		gfo(gtF, 0);
+
+	DiplotypeReconstructionSNPunorderedRawPruned	drp(pedigree, gfo);
+	drp.pruneDiplotypes();
+	drp.print();
+}
 
 int main(int argc, char **argv) {
 #	if 0
@@ -126,7 +140,7 @@ int main(int argc, char **argv) {
 	reconstruct(ped1, ped1Genotypes3);
 	reconstruct(ped1, ped1Genotypes4);
 #	endif
-#	if 1
+#	if 0
 	reconstruct(ped2, ped2Genotypes2);
 #	endif
 
@@ -144,11 +158,17 @@ int main(int argc, char **argv) {
 	//drawN(Ndraws, ped1, ped1Genotypes4, hfs1);
 	drawN(Ndraws, ped3, ped3Genotypes2, hfs1);
 #	endif
-#	if 0
+#	if 1
 #	define	Ndraws	4
 	const hfs_t		hfs1(vector<haplotypefs_t> { 8, 4 });
 	//drawN(Ndraws, ped1, ped1Genotypes4, hfs1);
 	drawN(Ndraws, ped3, ped3Genotypes5, hfs1);
 #	endif
+
+#	if 1
+	testPrune(ped1, ped1Genotypes1);
+	testPrune(ped1, ped1Genotypes6);
+#	endif
+
 	return 0;
 }

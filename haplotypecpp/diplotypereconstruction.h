@@ -191,10 +191,10 @@ public:
 // 	{}
 	DiplotypeReconstructionSNPmarginal(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
 		pedigree(_pedigree), founders(_pedigree.founders()), fetcher(_fetcher),
-		templates(founders.size()) {
+		templates(pedigree.N()) {
 
-		for (iid_t i = 0; i < founders.size(); i++) {
-			templates[i] = fetcher.diplotypeTemplate(founders[i]);
+		for (iid_t i = 0; i < pedigree.N(); i++) {
+			templates[i] = fetcher.diplotypeTemplate(i);
 		}
 	}
 	DiplotypeReconstructionSNPmarginal &operator=(DiplotypeReconstructionSNPmarginal &&other) {
@@ -269,7 +269,7 @@ public:
 		iid_t	i;
 		do {
 			for (i = 0; i < founders.size(); i++) {
-				diplotypes[i] = diplotypeFromTemplate(templates[i],
+				diplotypes[i] = diplotypeFromTemplate(templates[pedigree.founderAt(i)],
 					(*founderIterator)[i], heterozygous[i], missing[i]);
 				// assure unordered diplotypes
 				if (diplotypes[i].d1 > diplotypes[i].d2) break;
@@ -295,5 +295,17 @@ public:
 	~DiplotypeReconstructionSNPunorderedRawPruned() {}
 };
 #endif
+
+class DiplotypeReconstructionSNPunorderedRawPruned : public DiplotypeReconstructionSNPmarginal
+{
+	vector<dtsv_t>	reconstructions;
+public:
+	DiplotypeReconstructionSNPunorderedRawPruned(Pedigree &_pedigree, GenotypeFetcher &_fetcher) :
+		DiplotypeReconstructionSNPmarginal(_pedigree, _fetcher), reconstructions(_pedigree.N()) {}
+	~DiplotypeReconstructionSNPunorderedRawPruned() {}
+	
+	void	pruneDiplotypes(void);
+	void	print(void);
+};
 
 #endif // DIPLOTYPERECONSTRUCTION_H
