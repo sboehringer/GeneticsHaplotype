@@ -50,7 +50,11 @@ vector<g>	ped1Genotypes6 {	// genotypes by row, individuals by column 0..5
 	g { 3, 3, 1, 1, 3, 1 },
 	g { 3, 3, 1, 1, 3, 1 }
 };
-
+vector<g>	ped1Genotypes7 {	// genotypes by row, individuals by column 0..5
+	g { 1, 1, 2, 1, 1, 1 },
+	g { 1, 1, 2, 1, 1, 1 },
+	g { 1, 1, 1, 1, 1, 1 }
+};
 
 pedigree_t	ped2 {
 	{ 0, 1, 3 },
@@ -166,8 +170,9 @@ int main(int argc, char **argv) {
 #	endif
 
 #	if 1
-	testPrune(ped1, ped1Genotypes1);
 	testPrune(ped1, ped1Genotypes6);
+	testPrune(ped1, ped1Genotypes1);
+	testPrune(ped1, ped1Genotypes7);
 #	endif
 
 	return 0;

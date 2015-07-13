@@ -214,7 +214,7 @@ public:
 
 		for (int i = 0; i < Ndts; i++) {
 			diplotype_t	dt = diplotypeFromTemplate(t, i, heterozygous, missing);
-			if (dt.d1 > dt.d2) break;
+			if (dt.d1 > dt.d2) continue;
 			dts.push_back(dt);
 		}
 	}
