@@ -62,13 +62,17 @@ DiplotypeReconstructionSNPunordered::DiplotypeReconstructionSNPunordered(
  *     - embed ambiguous part into het-bitmap, other diplotype gets complement
  *   - iterate inheritance vectors (including direction)
  *     - compare expected transmission genotype against offspring genotype
+ *     - Optimization: if IV fails to match, IV can be increased by to
+ *          IV & (2^i - 1) + 2^i + 1, where i is the bit
+ *          last increased (all these IVs will fail at bit i and can therefore be skipped)
+ *          - High bits should corresponding to founders to skip as much as possible
+ *          - This is determined in the pre-sorting step done in pedigree.R (see there for further descriptions)
+ *          - inheritance trio 0 corresponds to two highest bits
+ *          - therefore trios containing founder should have low indeces
  * - determine mulitplicity (due to unorderedness during algorithm above)
  *   - #het > 0 contributes factor of two per founder
  *   - ambiguous transmissions do not contribute (already covered by step above)
  *
- *   - of the 4 possiblities a maximum of 2 can be possible be leading to same unordered offsping diplotype (**)
- *      - proof: mother can transmit both haplotypes to offspring => subtraction in offspring determines other
- *        alleles of father => different diplotype constitutions possible for offspring
  */
 
 inline haplotype_t	selectFromDiplotype(diplotype_t dt, bool index) {
@@ -97,13 +101,16 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 			factor += diplotypeIsHet(dtFounder[i]);
 		}
 		// inheritance vector iterator
-		for (iid_t ivI = 0, j = 0; ivI < (1 << (2*pedigree.sizeItrios())); ivI++) {
+		iid_t	NbitsIV = (2*pedigree.sizeItrios());
+		for (iid_t ivI = 0, j = 0; ivI < (1 << NbitsIV); ) {
 			// check for consistent transmission
 			for (j = 0; j < pedigree.sizeItrios(); j++) {
 				iid_t			id = pedigree.trioIid(j), mid = pedigree.trioMid(j), pid = pedigree.trioPid(j);
 				haplotype_t		miss = fetcher.maskMissing(id);
-				haplotype_t		htm = selectFromDiplotype(dts[mid], bitAt<iid_t>(ivI, 2*j));
-				haplotype_t		htp = selectFromDiplotype(dts[pid], bitAt<iid_t>(ivI, 2*j + 1));
+				haplotype_t		htm = selectFromDiplotype(dts[mid],
+														  bitAt<iid_t>(ivI, NbitsIV - 1 - (2*j)));
+				haplotype_t		htp = selectFromDiplotype(dts[pid],
+														  bitAt<iid_t>(ivI, NbitsIV - 1 - (2*j + 1)));
 				// expected genotype combination
 				genotypecomb_t	gtcE = genotypeCombinationFromDiplotype((diplotype_t){htm, htp}, cm, miss);
 				genotypecomb_t	gtcO = fetcher.genotypeCombination(id);	//offspring
@@ -118,11 +125,16 @@ void	DiplotypeReconstructionSNPunordered::reconstruct(GenotypeFetcher &fetcher) 
 				dts[id] = (diplotype_t){htm, htp};
 			}
 			// founder diplotypes not compatible with offspring genotypes
-			if (j < pedigree.sizeItrios()) continue;
+			if (j < pedigree.sizeItrios()) {
+				// skip all impossible configurations
+				ivI += 1 << (NbitsIV - 2*(j + 1));
+				continue;
+			}
 			// save reconstruction
 			buffer_t	*e = reconstruction.push();
 			ReconstructionArrayIvBlock	r(*this, e);
 			r.set(dtFounder, ivI);
+			ivI++;
 		}
 
 	}
